@@ -1,0 +1,1149 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Everest Check-in Board</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one working column. Import strip, then two tabs: the weekly cleaning plan (bookings on top, people below in the same day columns) and the booking ledger. */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --sunk:#e5eaef; --ink:#15202a; --muted:#5a6774; --line:#d4dbe2;
+  --accent:#15202a; --accent-ink:#ffffff;
+  --itz:#1f5fbf; --itz-soft:#dde8fa; --gro:#7c3fc8; --gro-soft:#ece2fa; --frei:#6b7782; --frei-soft:#e6eaee;
+  --in:#12784a; --in-soft:#dcf3e7; --out:#c0362c; --out-soft:#fbe3e0; --both:#a16207; --both-soft:#fbefd6;
+  --busy:#e5393f; --free:#86dd8a; --unk:#b9c2cb; --warn:#c0362c;
+  --f-display:"Archivo","Arial Narrow",Arial,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e141a; --surface:#151d25; --sunk:#1b252f; --ink:#e4ebf1; --muted:#93a1ad; --line:#26323d;
+  --accent:#e4ebf1; --accent-ink:#0e141a;
+  --itz:#7fb0ff; --itz-soft:#17294a; --gro:#c19bff; --gro-soft:#2b1f45; --frei:#9aa6b1; --frei-soft:#222c36;
+  --in:#45d095; --in-soft:#143327; --out:#ff7d70; --out-soft:#3d1c19; --both:#f0b54a; --both-soft:#3a2c12;
+  --busy:#d23c42; --free:#3c9d5a; --unk:#4a5663; --warn:#ff7d70; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0e141a; --surface:#151d25; --sunk:#1b252f; --ink:#e4ebf1; --muted:#93a1ad; --line:#26323d;
+  --accent:#e4ebf1; --accent-ink:#0e141a;
+  --itz:#7fb0ff; --itz-soft:#17294a; --gro:#c19bff; --gro-soft:#2b1f45; --frei:#9aa6b1; --frei-soft:#222c36;
+  --in:#45d095; --in-soft:#143327; --out:#ff7d70; --out-soft:#3d1c19; --both:#f0b54a; --both-soft:#3a2c12;
+  --busy:#d23c42; --free:#3c9d5a; --unk:#4a5663; --warn:#ff7d70; color-scheme:dark;}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px;display:grid;gap:20px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:clamp(26px,4vw,36px);font-weight:800}
+h2{font-size:20px;font-weight:700}
+h3{font-size:16px;font-weight:700}
+p{margin:0}
+.muted{color:var(--muted)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font:600 11.5px/1 var(--f-body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:end;justify-content:space-between}
+header.top .lede{max-width:64ch;color:var(--muted);margin-top:6px}
+.status{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.pill.example{background:var(--both-soft);border-color:transparent;color:var(--both)}
+.pill.live{background:var(--in-soft);border-color:transparent;color:var(--in)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px;min-width:0}
+.panel-head{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;margin-bottom:14px}
+button,.btn{font:600 14px var(--f-body);border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+button:hover{border-color:var(--ink)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.itz{background:var(--itz);color:#fff;border-color:var(--itz)}
+button.gro{background:var(--gro);color:#fff;border-color:var(--gro)}
+:root:not([data-theme="light"]) button.itz,:root:not([data-theme="light"]) button.gro{color:#0e141a}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) button.itz,:root:not([data-theme="dark"]) button.gro{color:#fff}}
+button:focus-visible,a:focus-visible,select:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--itz);outline-offset:2px}
+.row-btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+/* import */
+.imp{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr);gap:18px}
+@media (max-width:900px){.imp{grid-template-columns:1fr}}
+.imp .col{display:grid;gap:10px;align-content:start;min-width:0}
+.bm{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:7px;background:var(--ink);color:var(--bg);font:700 14px var(--f-body);text-decoration:none;cursor:grab;width:max-content}
+textarea{width:100%;min-height:70px;resize:vertical;font:12.5px/1.4 var(--f-mono);border:1px dashed var(--line);border-radius:7px;background:var(--sunk);color:var(--ink);padding:10px}
+.msg{font-size:13.5px}
+.msg.ok{color:var(--in)} .msg.err{color:var(--out)}
+.pbox{display:grid;gap:6px}
+.pbox .nm{display:flex;align-items:center;gap:8px;font:700 15px var(--f-display)}
+.ask{border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;gap:10px;background:var(--sunk)}
+.hcard{border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:grid;gap:6px}
+.hcard .nm{display:flex;align-items:center;gap:8px;font:700 16px var(--f-display)}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+.dot.itz{background:var(--itz)} .dot.gro{background:var(--gro)} .dot.frei{background:var(--frei)}
+.hcard .meta{font-size:13px;color:var(--muted)}
+details.how{font-size:13.5px;color:var(--muted)}
+details.how summary{cursor:pointer;color:var(--ink);font-weight:600}
+details.how ol{margin:8px 0 0;padding-left:20px;display:grid;gap:4px}
+
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tab{border:0;border-bottom:3px solid transparent;border-radius:0;background:none;padding:10px 14px;font:700 16px var(--f-display);color:var(--muted)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.tab:hover{border-color:transparent;color:var(--ink)}
+.tab[aria-selected="true"]:hover{border-bottom-color:var(--ink)}
+
+.controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:600 13px var(--f-body);padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+label.tog{display:inline-flex;gap:8px;align-items:center;font-size:14px;cursor:pointer}
+.weeknav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.weeknav .lbl{font:700 18px var(--f-display);min-width:12ch}
+
+/* tables */
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%}
+.plan th,.plan td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:center;vertical-align:middle;font-size:14px}
+.plan thead th{background:var(--sunk);font:600 12px var(--f-body);color:var(--muted);letter-spacing:.04em;white-space:nowrap}
+.plan thead th .dn{display:block;font:700 15px var(--f-display);color:var(--ink);letter-spacing:0}
+.plan thead th.today{background:var(--ink);color:var(--bg)}
+.plan thead th.today .dn{color:var(--bg)}
+.plan th.rh{text-align:left;white-space:nowrap;font-weight:600;position:sticky;left:0;background:var(--surface);z-index:1;min-width:150px}
+.plan thead th.rh{background:var(--sunk)}
+.plan tr.grp th{background:var(--sunk);text-align:left;font:700 13px var(--f-body);position:sticky;left:0}
+.plan tr.grp td{background:var(--sunk)}
+.plan td.n{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-weight:500}
+.plan td.n .z{color:var(--line)}
+.plan td.n.out b{color:var(--out)} .plan td.n.in b{color:var(--in)}
+.rns{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin-top:4px;max-width:120px;margin-inline:auto}
+.rn{font:600 11.5px var(--f-mono);padding:1px 5px;border-radius:4px;min-width:20px;text-align:center}
+.rn.o{background:var(--out-soft);color:var(--out)}
+.rn.i{background:var(--in-soft);color:var(--in)}
+.rn.prio{background:var(--both-soft);color:var(--both);outline:1px solid var(--both)}
+.plan td .rm{display:block;font:500 11px var(--f-body);color:var(--muted);white-space:nowrap}
+.plan tr.need td.short{background:var(--out-soft)}
+.plan tr.need td.short b{color:var(--warn)}
+.plan tr.sep td,.plan tr.sep th{border-bottom:2px solid var(--ink);padding:0}
+.plan input.name{font:600 14px var(--f-body);border:1px solid transparent;background:transparent;color:var(--ink);padding:4px 6px;border-radius:5px;width:100%;min-width:120px}
+.plan input.name:hover{border-color:var(--line)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:5px 7px;font:600 12px var(--f-body);background:var(--surface);color:var(--muted);min-width:36px;justify-content:center}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"].I{background:var(--itz);color:var(--surface)}
+.seg button[aria-pressed="true"].G{background:var(--gro);color:var(--surface)}
+.seg button[aria-pressed="true"].F{background:var(--frei);color:var(--surface)}
+.plan input.note{font:13px var(--f-body);border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:4px 6px;border-radius:5px;width:100%;min-width:110px}
+.task{display:block;font:600 12px var(--f-body);background:var(--sunk);border:1px solid var(--line);border-radius:5px;padding:2px 6px;margin:2px 0;white-space:nowrap}
+.sheet{border-collapse:collapse;background:var(--surface)}
+.sheet th,.sheet td{border:1px solid var(--ink);padding:6px 12px;font:500 17px/1.25 var(--f-body);text-align:left;vertical-align:bottom}
+.sheet thead th{font:700 18px/1.2 var(--f-body);height:56px}
+.sheet td.wd{font-weight:700;width:56px}
+.sheet td.dt{font-weight:700;text-align:right;white-space:nowrap;width:100px}
+.sheet td:nth-child(3),.sheet td:nth-child(4){min-width:200px}
+.sheet tr.is-today td{background:var(--sunk)}
+.sheet td[contenteditable="true"]{cursor:text}
+.sheet td[contenteditable="true"]:hover{background:var(--sunk)}
+.sheet td[contenteditable="true"]:focus{outline:2px solid var(--itz);outline-offset:-2px;background:var(--surface)}
+.sheet td.edited{box-shadow:inset 3px 0 0 var(--both)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13.5px;align-items:center;color:var(--muted)}
+.legend .k{display:inline-flex;align-items:center;gap:6px}
+
+/* month overview */
+.mon th,.mon td{border:1px solid var(--line);padding:0;text-align:center}
+.mon thead th{background:var(--sunk);font:600 11px var(--f-body);color:var(--muted);padding:3px 0;min-width:30px}
+.mon thead th.today{background:var(--ink);color:var(--bg)}
+.mon thead th.wk{border-left:2px solid var(--ink)}
+.mon td.wk{border-left:2px solid var(--ink)}
+.mon .rh{position:sticky;left:0;background:var(--surface);text-align:left;padding:4px 10px;font-size:13px;font-weight:600;white-space:nowrap;z-index:1}
+.mon td.n{font:500 12px var(--f-mono);height:26px}
+.mon td.n .z{color:var(--line)}
+.mon button.a{width:30px;height:28px;border:0;border-radius:0;padding:0;justify-content:center;font:700 12px var(--f-mono);background:transparent;color:var(--muted)}
+.mon button.a.I{background:var(--itz);color:var(--surface)}
+.mon button.a.G{background:var(--gro);color:var(--surface)}
+.mon button.a.F{background:var(--frei-soft);color:var(--frei)}
+.mon td.tot{font:500 12px var(--f-mono);padding:0 8px;white-space:nowrap;text-align:left}
+
+/* bookings */
+.todays{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px}
+.tcard{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.tcard .hd{grid-column:1/-1;padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center}
+.tcard .c{padding:12px 16px;border-left:1px solid var(--line);min-width:0}
+.tcard .c:nth-child(2){border-left:0}
+.tcard .big{font:800 30px/1 var(--f-display);font-variant-numeric:tabular-nums;margin-top:6px}
+.tcard .who{font-size:12.5px;color:var(--muted);margin-top:6px}
+.c-in{color:var(--in)} .c-out{color:var(--out)} .c-both{color:var(--both)}
+.ledger th,.ledger td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:14px}
+.ledger thead th{font:600 12px var(--f-body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--sunk);white-space:nowrap}
+.ledger thead tr.h1 th{text-transform:none;letter-spacing:0;font:700 13px var(--f-body);color:var(--ink)}
+.ledger td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right;width:1%;white-space:nowrap}
+.ledger th.num{text-align:right}
+.ledger td.date{white-space:nowrap;font-weight:600}
+.ledger td.date .wd{color:var(--muted);font-weight:500;display:inline-block;width:2.6em}
+.ledger tr.is-today td{background:var(--sunk)}
+.ledger tr.quiet td{color:var(--muted)}
+.ledger .z{color:var(--line)}
+.ledger td.bl,.ledger th.bl{border-left:1px solid var(--line)}
+.rooms{display:flex;flex-wrap:wrap;gap:4px;min-width:240px}
+.tag{font-size:12px;font-weight:600;padding:2px 7px;border-radius:5px;white-space:nowrap}
+.tag.in{background:var(--in-soft);color:var(--in)}
+.tag.out{background:var(--out-soft);color:var(--out)}
+.tag.both{background:var(--both-soft);color:var(--both)}
+.grid th,.grid td{border:1px solid var(--line);padding:0}
+.grid th{font:600 11px var(--f-body);color:var(--muted);background:var(--sunk);text-align:center;padding:3px 0;min-width:30px}
+.grid th.today-col{background:var(--ink);color:var(--bg)}
+.wgrid{table-layout:fixed}
+.wgrid th:first-child,.wgrid td.room{width:90px}
+.wgrid td{padding:4px;text-align:center}
+.wgrid td.room{text-align:left}
+.wgrid .cell{width:30px;height:30px;margin:0 auto;font-size:10.5px}
+.wgrid th{font-size:12px}
+.grid td.room{position:sticky;left:0;z-index:1;background:var(--surface);font-size:13px;padding:4px 10px;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}
+.cell{width:30px;height:26px;display:grid;place-items:center;font:600 10.5px var(--f-mono);color:#111}
+.F{background:var(--free)} .O{background:var(--busy)}
+.I{background:linear-gradient(to bottom right,var(--free) 50%,var(--busy) 50%)}
+.X{background:linear-gradient(to bottom right,var(--busy) 50%,var(--free) 50%)}
+.B{background:linear-gradient(to bottom right,var(--busy) 44%,var(--free) 44%,var(--free) 56%,var(--busy) 56%)}
+.U{background:repeating-linear-gradient(45deg,var(--unk) 0 4px,transparent 4px 8px)}
+.sw{display:inline-block;width:22px;height:18px;border:1px solid var(--line);vertical-align:-4px;margin-right:6px}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;z-index:20;max-width:calc(100vw - 32px)}
+.stack{display:grid;gap:14px}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">OneStepHost · Everest planning</div>
+      <h1>Itzling &amp; Grödig Board</h1>
+      <p class="lede">Check-ins and check-outs for both hotels, and the cleaning plan for the team.</p>
+    </div>
+    <div class="status" id="status"></div>
+  </header>
+
+  <section class="panel" aria-labelledby="imp-h">
+    <div class="panel-head"><h2 id="imp-h">Import from Everest</h2></div>
+    <div class="imp">
+      <div class="col">
+        <h3>1 · Scrape button</h3>
+        <p class="muted" style="font-size:14px">Drag it to your bookmarks bar once. Then, on each hotel's planning page, click it. It copies that month's grid.</p>
+        <a class="bm" id="bm" href="#">⤓ Everest scrape</a>
+        <div class="row-btns">
+          <button type="button" id="copyBm">Copy bookmark code</button>
+          <button type="button" id="copyConsole">Copy console code</button>
+        </div>
+        <details class="how"><summary>Dragging doesn't work?</summary>
+          <ol>
+            <li>Click <b>Copy bookmark code</b>.</li>
+            <li>Right-click the bookmarks bar, choose <b>Add page</b>.</li>
+            <li>Name it "Everest scrape" and paste the code into the URL field.</li>
+            <li>Or: on the planning page press F12, open <b>Console</b>, paste the console code and press Enter.</li>
+          </ol>
+        </details>
+      </div>
+      <div class="col">
+        <h3>2 · Paste here</h3>
+        <div class="pbox"><label for="paste-itzling" class="nm"><span class="dot itz"></span>Itzling</label>
+          <textarea id="paste-itzling" placeholder="Paste the Itzling data here"></textarea>
+          <p class="msg" id="msg-itzling" role="status"></p></div>
+        <div class="pbox"><label for="paste-groedig" class="nm"><span class="dot gro"></span>Grödig</label>
+          <textarea id="paste-groedig" placeholder="Paste the Grödig data here"></textarea>
+          <p class="msg" id="msg-groedig" role="status"></p></div>
+        <div id="askBox"></div>
+        <p class="msg" id="msg" role="status"></p>
+      </div>
+      <div class="col" id="hotelCards"></div>
+    </div>
+  </section>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-plan" aria-controls="view-plan" data-tab="plan">Cleaning plan</button>
+    <button class="tab" role="tab" id="tab-bookings" aria-controls="view-bookings" data-tab="bookings">Bookings</button>
+  </div>
+
+  <!-- PLAN -->
+  <section id="view-plan" role="tabpanel" aria-labelledby="tab-plan" class="stack">
+    <div class="panel">
+      <div class="panel-head"><h2>Room grids</h2>
+        <div class="legend"><span><span class="sw F"></span>Free</span><span><span class="sw O"></span>Booked</span><span><span class="sw I"></span>Check-in</span><span><span class="sw X"></span>Check-out</span><span><span class="sw B"></span>Out + in</span></div></div>
+      <div class="stack" id="weekGrids"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <div class="weeknav">
+          <button type="button" id="wkPrev" aria-label="Previous week">←</button>
+          <div class="lbl" id="wkLbl"></div>
+          <button type="button" id="wkNext" aria-label="Next week">→</button>
+          <button type="button" id="wkToday">This week</button>
+        </div>
+        <div class="row-btns">
+          <button type="button" id="copyPrev">Copy last week's plan</button>
+          <button type="button" id="clearWeek">Clear this week</button>
+        </div>
+      </div>
+      <div class="legend" style="margin-bottom:12px">
+        <span class="k"><span class="dot itz"></span>Itzling</span>
+        <span class="k"><span class="dot gro"></span>Grödig</span>
+        <span class="k"><span class="dot frei"></span>Frei (day off)</span>
+        <span>Week runs Sunday to Sunday, like the team sheet. Numbers under each count are the apartment numbers. <span class="rn prio">7</span> = guest leaves and a new guest arrives the same day (clean first). Red cell: rooms to clean but nobody assigned.</span>
+      </div>
+      <p class="muted" id="binInfo" style="font-size:13.5px;margin-bottom:12px"></p>
+      <div class="scroll"><table class="plan" id="weekTbl"></table></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <div><h2>Week plan</h2><p class="muted" style="font-size:13.5px">Filled in from the plan above. Click any cell to write your own text; edited cells get an amber edge. Clear a cell to go back to the automatic text.</p></div>
+        <div class="row-btns"><button type="button" id="resetSheet" hidden>Undo my edits this week</button><button type="button" id="copySheet">Copy for Excel</button><button type="button" id="copySheetTxt">Copy as text</button></div>
+      </div>
+      <div class="scroll" style="border-color:var(--ink)"><table class="sheet" id="sheet"></table></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2 id="monH">Month overview</h2>
+        <div class="row-btns">
+          <button type="button" id="monPrev" aria-label="Previous month">←</button>
+          <button type="button" id="monNext" aria-label="Next month">→</button>
+          <button type="button" id="copyMonth">Copy month plan</button>
+        </div>
+      </div>
+      <p class="muted" style="font-size:13.5px;margin-bottom:12px">Click a person's day to switch it: Itzling → Grödig → Frei → empty.</p>
+      <div class="scroll"><table class="mon" id="monTbl"></table></div>
+    </div>
+  </section>
+
+  <!-- BOOKINGS -->
+  <section id="view-bookings" role="tabpanel" aria-labelledby="tab-bookings" class="stack" hidden>
+    <div class="todays" id="todays"></div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Check-ins and check-outs by day</h2>
+        <div class="row-btns">
+          <button type="button" id="csvDaily">Copy daily CSV</button>
+          <button type="button" id="csvRooms">Copy room-by-day CSV</button>
+        </div>
+      </div>
+      <div class="controls" style="margin-bottom:14px">
+        <div class="chips" id="hotelChips" role="group" aria-label="Hotel"></div>
+        <div class="chips" id="months" role="group" aria-label="Month"></div>
+        <label class="tog"><input type="checkbox" id="onlyMoves"> Only days with check-ins or check-outs</label>
+      </div>
+      <div class="scroll"><table class="ledger" id="ledger"></table></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Room grids</h2></div>
+      <div class="legend" style="margin-bottom:12px">
+        <span><span class="sw F"></span>Free</span>
+        <span><span class="sw O"></span>Booked (guest stays)</span>
+        <span><span class="sw I"></span>Check-in</span>
+        <span><span class="sw X"></span>Check-out</span>
+        <span><span class="sw B"></span>Check-out + check-in</span>
+      </div>
+      <div class="stack" id="grids"></div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>/* ===== Scraper: runs on the Everest planning page via bookmark or console ===== */
+function everestScrape(){
+  var DAY=/^(\d{1,2})\.?$/;
+  var WDS={mo:1,di:2,mi:3,'do':4,fr:5,sa:6,so:0,mon:1,tue:2,wed:3,thu:4,fri:5,sat:6,sun:0,tu:2,we:3,th:4,su:0};
+  var MONTH_RE=/(januar|january|februar|february|märz|maerz|march|april|mai|may|juni|june|juli|july|august|september|oktober|october|november|dezember|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|okt|oct|nov|dez|dec)\.?\s*(\d{4})/i;
+  var pc=document.createElement('canvas');pc.width=pc.height=1;var pcx=pc.getContext('2d');
+  function parseColor(s,depth){
+    if(!s){return null;}
+    s=String(s).trim();
+    if(s==='transparent'||s==='none'||s==='currentcolor'){return [0,0,0,0];}
+    var m=s.match(/^rgba?\(([^)]*)\)$/i);
+    if(m){
+      var p=m[1].replace('/',' ').split(/[\s,]+/).filter(function(x){return x!=='';});
+      var a=p.length>3?(p[3].indexOf('%')>=0?parseFloat(p[3])/100:parseFloat(p[3])):1;
+      return [parseFloat(p[0]),parseFloat(p[1]),parseFloat(p[2]),a];
+    }
+    if(depth){return null;}
+    try{pcx.fillStyle='#000';pcx.fillStyle=s;var o=pcx.fillStyle;
+      if(o.charAt(0)==='#'){return [parseInt(o.substr(1,2),16),parseInt(o.substr(3,2),16),parseInt(o.substr(5,2),16),1];}
+      return parseColor(o,1);}catch(e){return null;}
+  }
+  function klass(c){
+    if(!c||c[3]<0.3){return null;}
+    var r=c[0]/255,g=c[1]/255,b=c[2]/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn,s=mx?d/mx:0,h=0;
+    if(d===0||s<0.22||mx<0.25){return 'N';}
+    if(mx===r){h=60*(((g-b)/d)%6);}else if(mx===g){h=60*((b-r)/d+2);}else{h=60*((r-g)/d+4);}
+    if(h<0){h+=360;}
+    if(h<=28||h>=330){return 'R';}
+    if(h>=65&&h<=175){return 'G';}
+    return 'O';
+  }
+  function hex(c){if(!c){return '';}return '#'+[0,1,2].map(function(i){var v=Math.round(c[i]).toString(16);return v.length<2?'0'+v:v;}).join('');}
+  function splitTop(s){
+    var out=[],depth=0,cur='';
+    for(var i=0;i<s.length;i++){var ch=s.charAt(i);
+      if(ch==='('){depth++;}else if(ch===')'){depth--;}
+      if(ch===','&&depth===0){out.push(cur.trim());cur='';}else{cur+=ch;}}
+    if(cur.trim()){out.push(cur.trim());}
+    return out;
+  }
+  function gradAt(args,w,h,x,y){
+    var parts=splitTop(args),ang=Math.PI,i=0,p0=parts[0]||'';
+    if(/^to\s/i.test(p0)){
+      var dx=0,dy=0;
+      if(/left/.test(p0)){dx=-1;} if(/right/.test(p0)){dx=1;}
+      if(/top/.test(p0)){dy=-1;} if(/bottom/.test(p0)){dy=1;}
+      ang=(dx&&dy)?Math.atan2(dx*h,-dy*w):Math.atan2(dx,-dy);i=1;
+    }else{
+      var am=p0.match(/^(-?[\d.]+)(deg|rad|turn|grad)$/);
+      if(am){var v=parseFloat(am[1]);ang=am[2]==='deg'?v*Math.PI/180:am[2]==='rad'?v:am[2]==='turn'?v*2*Math.PI:v*Math.PI/200;i=1;}
+    }
+    var sn=Math.sin(ang),cs=-Math.cos(ang);
+    var L=Math.abs(w*sn)+Math.abs(h*Math.cos(ang))||1;
+    var t=0.5+((x-w/2)*sn+(y-h/2)*cs)/L;
+    var stops=[];
+    for(;i<parts.length;i++){
+      var pm=parts[i].match(/^((?:rgba?|hsla?|color|lab|lch|oklab|oklch)\([^)]*\)|#[0-9a-f]+|[a-z]+)\s*(.*)$/i);
+      if(!pm){continue;}
+      var col=parseColor(pm[1]);
+      if(!col){continue;}
+      var poss=pm[2].trim()?pm[2].trim().split(/\s+/):[];
+      if(!poss.length){stops.push({c:col,p:null});}
+      poss.forEach(function(ps){var n=parseFloat(ps);var pp=ps.indexOf('%')>=0?n/100:n/L;stops.push({c:col,p:isNaN(pp)?null:pp});});
+    }
+    if(!stops.length){return null;}
+    if(stops[0].p===null){stops[0].p=0;}
+    if(stops[stops.length-1].p===null){stops[stops.length-1].p=1;}
+    for(var k=1;k<stops.length;k++){
+      if(stops[k].p===null){var j=k;while(stops[j].p===null){j++;}
+        var a0=stops[k-1].p,a1=stops[j].p;for(var q=k;q<j;q++){stops[q].p=a0+(a1-a0)*(q-k+1)/(j-k+1);}}
+      if(stops[k].p<stops[k-1].p){stops[k].p=stops[k-1].p;}
+    }
+    if(t<=stops[0].p){return stops[0].c;}
+    for(var z=0;z<stops.length-1;z++){
+      var s0=stops[z],s1=stops[z+1];
+      if(t<=s1.p){
+        if(s1.p===s0.p){return s1.c;}
+        var f=(t-s0.p)/(s1.p-s0.p);
+        return [0,1,2,3].map(function(e){return s0.c[e]+(s1.c[e]-s0.c[e])*f;});
+      }
+    }
+    return stops[stops.length-1].c;
+  }
+  function borderPaint(cs,w,h,lx,ly){
+    var bt=parseFloat(cs.borderTopWidth)||0,br=parseFloat(cs.borderRightWidth)||0,bb=parseFloat(cs.borderBottomWidth)||0,bl=parseFloat(cs.borderLeftWidth)||0;
+    var inT=ly<bt,inB=ly>h-bb,inL=lx<bl,inR=lx>w-br,side=null,rx=w-lx,by=h-ly;
+    if(!(inT||inB||inL||inR)){return null;}
+    if(inT&&inL){side=(bl===0||ly*bl<lx*bt)?'Top':'Left';}
+    else if(inT&&inR){side=(br===0||ly*br<rx*bt)?'Top':'Right';}
+    else if(inB&&inL){side=(bl===0||by*bl<lx*bb)?'Bottom':'Left';}
+    else if(inB&&inR){side=(br===0||by*br<rx*bb)?'Bottom':'Right';}
+    else{side=inT?'Top':inB?'Bottom':inL?'Left':'Right';}
+    if(cs['border'+side+'Style']==='none'||cs['border'+side+'Style']==='hidden'){return null;}
+    var c=parseColor(cs['border'+side+'Color']);
+    return (c&&c[3]>0.3)?c:null;
+  }
+  function paintAt(cs,r,x,y,el){
+    var lx=x-r.left,ly=y-r.top,w=r.width,h=r.height;
+    if(lx<0||ly<0||lx>w||ly>h||w<=0||h<=0){return null;}
+    if(cs.visibility==='hidden'||cs.display==='none'||parseFloat(cs.opacity)<0.2){return null;}
+    if(el&&el.namespaceURI==='http://www.w3.org/2000/svg'&&el.tagName.toLowerCase()!=='svg'){
+      var f=parseColor(cs.fill);if(f&&f[3]>0.3){return f;}return null;
+    }
+    if(el&&el.tagName==='IMG'){
+      try{var c2=document.createElement('canvas');c2.width=c2.height=1;var k2=c2.getContext('2d');
+        k2.drawImage(el,(lx/w)*el.naturalWidth,(ly/h)*el.naturalHeight,1,1,0,0,1,1);
+        var dd=k2.getImageData(0,0,1,1).data;if(dd[3]>80){return [dd[0],dd[1],dd[2],dd[3]/255];}}catch(e){}
+      return null;
+    }
+    var bc=borderPaint(cs,w,h,lx,ly);
+    if(bc){return bc;}
+    var bi=cs.backgroundImage;
+    if(bi&&bi!=='none'){
+      var layers=splitTop(bi);
+      for(var i=0;i<layers.length;i++){
+        var m=layers[i].match(/^(?:repeating-)?linear-gradient\((.*)\)$/i);
+        if(m){var gc=gradAt(m[1],w,h,lx,ly);if(gc&&gc[3]>0.3){return gc;}}
+      }
+    }
+    var bg=parseColor(cs.backgroundColor);
+    return (bg&&bg[3]>0.3)?bg:null;
+  }
+  function pseudoPaint(W,el,x,y){
+    var hr=null,hcs=null,names=['::after','::before'];
+    for(var i=0;i<names.length;i++){
+      var cs=W.getComputedStyle(el,names[i]);
+      if(!cs||cs.content==='none'||cs.content==='normal'||cs.display==='none'){continue;}
+      if(!hr){hr=el.getBoundingClientRect();hcs=W.getComputedStyle(el);}
+      var w=parseFloat(cs.width)||0,h=parseFloat(cs.height)||0;
+      if(cs.boxSizing!=='border-box'){
+        w+=(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0)+(parseFloat(cs.borderLeftWidth)||0)+(parseFloat(cs.borderRightWidth)||0);
+        h+=(parseFloat(cs.paddingTop)||0)+(parseFloat(cs.paddingBottom)||0)+(parseFloat(cs.borderTopWidth)||0)+(parseFloat(cs.borderBottomWidth)||0);
+      }
+      var r;
+      if(cs.position==='absolute'||cs.position==='fixed'){
+        var ox=hr.left+(parseFloat(hcs.borderLeftWidth)||0),oy=hr.top+(parseFloat(hcs.borderTopWidth)||0);
+        var pw=hr.width-(parseFloat(hcs.borderLeftWidth)||0)-(parseFloat(hcs.borderRightWidth)||0);
+        var ph=hr.height-(parseFloat(hcs.borderTopWidth)||0)-(parseFloat(hcs.borderBottomWidth)||0);
+        var L=parseFloat(cs.left),T=parseFloat(cs.top);
+        if(isNaN(L)){L=pw-(parseFloat(cs.right)||0)-w;}
+        if(isNaN(T)){T=ph-(parseFloat(cs.bottom)||0)-h;}
+        r={left:ox+L,top:oy+T,width:w,height:h};
+      }else{r={left:hr.left,top:hr.top,width:w||hr.width,height:h||hr.height};}
+      var c=paintAt(cs,r,x,y,null);
+      if(c){return c;}
+    }
+    return null;
+  }
+  function colorAt(W,cell,hit,x,y){
+    var el=hit,stop=cell.parentElement,guard=0;
+    if(!el||el.contains(cell)){el=cell;}
+    while(el&&guard++<14){
+      var c=pseudoPaint(W,el,x,y);
+      if(c){return c;}
+      c=paintAt(W.getComputedStyle(el),el.getBoundingClientRect(),x,y,el);
+      if(c){return c;}
+      if(el===cell||el===stop||el.contains(cell)){break;}
+      el=el.parentElement;
+    }
+    return null;
+  }
+  function textOf(el){return (el.textContent||'').replace(/\s+/g,' ').trim();}
+  function findCells(D){
+    var all=D.body?D.body.getElementsByTagName('*'):[],seen=new Set(),cells=[];
+    for(var i=0;i<all.length;i++){
+      var el=all[i];
+      if(el.children.length>3){continue;}
+      var tx=textOf(el);
+      if(tx.length>3||!DAY.test(tx)){continue;}
+      var cur=el;
+      while(cur.parentElement&&textOf(cur.parentElement)===tx){
+        var pr=cur.parentElement.getBoundingClientRect();
+        if(pr.width>120||pr.height>120){break;}
+        cur=cur.parentElement;
+      }
+      if(seen.has(cur)){continue;}
+      var r=cur.getBoundingClientRect();
+      if(r.width<10||r.height<10||r.width>120||r.height>120){continue;}
+      seen.add(cur);
+      cells.push({el:cur,d:parseInt(tx,10),r:r});
+    }
+    return cells;
+  }
+  function leaves(D){
+    var all=D.body.getElementsByTagName('*'),out=[];
+    for(var i=0;i<all.length;i++){
+      var el=all[i],tag=el.tagName;
+      if(tag==='SCRIPT'||tag==='STYLE'||tag==='OPTION'){continue;}
+      var hasTextChild=false;
+      for(var n=el.firstChild;n;n=n.nextSibling){if(n.nodeType===3&&n.nodeValue.trim()){hasTextChild=true;break;}}
+      if(!hasTextChild){continue;}
+      var tx=textOf(el);
+      if(!tx||tx.length>160){continue;}
+      var r=el.getBoundingClientRect();
+      if(r.width<=0||r.height<=0){continue;}
+      out.push({el:el,t:tx,r:r});
+    }
+    return out;
+  }
+  var docs=[{D:document,W:window}];
+  try{for(var fi=0;fi<window.frames.length;fi++){try{var fw=window.frames[fi];if(fw.document&&fw.document.body){docs.push({D:fw.document,W:fw});}}catch(e){}}}catch(e){}
+  var best=null;
+  docs.forEach(function(o){var c=findCells(o.D);if(!best||c.length>best.cells.length){best={D:o.D,W:o.W,cells:c};}});
+  var D=best.D,W=best.W,cells=best.cells;
+  var sorted=cells.slice().sort(function(a,b){return (a.r.top+a.r.height/2)-(b.r.top+b.r.height/2);});
+  var clusters=[];
+  sorted.forEach(function(c){
+    var cy=c.r.top+c.r.height/2,last=clusters[clusters.length-1];
+    if(last&&Math.abs(cy-last.cy)<c.r.height/2){last.items.push(c);}
+    else{clusters.push({cy:cy,items:[c]});}
+  });
+  clusters=clusters.filter(function(cl){return cl.items.length>=5;});
+  clusters.forEach(function(cl){cl.items.sort(function(a,b){return a.r.left-b.r.left;});});
+  var lv=leaves(D);
+  var rows=clusters.map(function(cl,ri){
+    var first=cl.items[0],top=Math.min.apply(null,cl.items.map(function(c){return c.r.top;})),bot=Math.max.apply(null,cl.items.map(function(c){return c.r.bottom;}));
+    var name='',tr=first.el.closest?first.el.closest('tr'):null;
+    if(tr&&tr.cells&&tr.cells.length&&!DAY.test(textOf(tr.cells[0]))){name=textOf(tr.cells[0]);}
+    if(!name){
+      var bestL=null;
+      lv.forEach(function(l){
+        var cy=l.r.top+l.r.height/2;
+        if(cy<top||cy>bot||l.r.right>first.r.left+2||DAY.test(l.t)){return;}
+        if(!bestL||l.t.length>bestL.t.length){bestL=l;}
+      });
+      if(bestL){name=(bestL.el.getAttribute('title')||'').length>bestL.t.length?bestL.el.getAttribute('title'):bestL.t;}
+    }
+    return {room:name||('Row '+(ri+1)),top:top,items:cl.items};
+  });
+  var head=[],ml=[];
+  if(rows.length){
+    var topRow=rows[0];
+    var wdl=lv.filter(function(l){return WDS.hasOwnProperty(l.t.toLowerCase().replace('.',''))&&l.r.bottom<=topRow.top+3;});
+    var mol=lv.filter(function(l){return MONTH_RE.test(l.t)&&l.r.bottom<=topRow.top+3;});
+    topRow.items.forEach(function(c){
+      var cx=c.r.left+c.r.width/2,w=null,bd=c.r.width/2,mt='';
+      wdl.forEach(function(l){var dd=Math.abs(l.r.left+l.r.width/2-cx);if(dd<bd){bd=dd;w=WDS[l.t.toLowerCase().replace('.','')];}});
+      mol.forEach(function(l){if(l.r.left-2<=cx&&cx<=l.r.right+2&&!mt){mt=l.t;}});
+      head.push({d:c.d,w:w});ml.push(mt);
+    });
+  }
+  var months=[];
+  try{var bt=(D.body.innerText||'').slice(0,40000),re=new RegExp(MONTH_RE.source,'gi'),mm;while((mm=re.exec(bt))&&months.length<30){if(months.indexOf(mm[0])<0){months.push(mm[0]);}}}catch(e){}
+  try{D.querySelectorAll('select').forEach(function(s){var o=s.options[s.selectedIndex];if(o&&MONTH_RE.test(o.text)){months.unshift(o.text.trim());}});}catch(e){}
+  var saved=[],sc=cells.length?cells[0].el.parentElement:null;
+  while(sc){if(sc.scrollLeft||sc.scrollTop){saved.push([sc,sc.scrollLeft,sc.scrollTop]);}sc=sc.parentElement;}
+  var wx=W.scrollX,wy=W.scrollY;
+  function visible(r){return r.left>=0&&r.top>=0&&r.right<=W.innerWidth&&r.bottom<=W.innerHeight;}
+  function okHit(hit,cell){
+    if(!hit){return false;}
+    if(hit===cell||cell.contains(hit)){return true;}
+    if(hit.contains(cell)){return true;}
+    var a=hit.getBoundingClientRect(),b=cell.getBoundingClientRect();
+    var ix=Math.min(a.right,b.right)-Math.max(a.left,b.left),iy=Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top);
+    return ix>0&&iy>0&&a.width*a.height<=b.width*b.height*4;
+  }
+  var PTS={tl:[0.17,0.17],br:[0.83,0.83],m1:[0.5,0.5],m2:[0.38,0.62],m3:[0.62,0.38]};
+  var bad=0;
+  function sample(cell){
+    var r=cell.getBoundingClientRect();
+    if(!visible(r)){cell.scrollIntoView({block:'center',inline:'center'});r=cell.getBoundingClientRect();}
+    var res={},retried=false;
+    for(var key in PTS){
+      var x=r.left+PTS[key][0]*r.width,y=r.top+PTS[key][1]*r.height;
+      var hit=D.elementFromPoint(x,y);
+      if(!okHit(hit,cell)&&!retried){retried=true;cell.scrollIntoView({block:'center',inline:'center'});r=cell.getBoundingClientRect();x=r.left+PTS[key][0]*r.width;y=r.top+PTS[key][1]*r.height;hit=D.elementFromPoint(x,y);}
+      if(!okHit(hit,cell)){hit=null;bad++;}
+      res[key]=colorAt(W,cell,hit,x,y);
+    }
+    return res;
+  }
+  var outRows=rows.map(function(row){
+    return {room:row.room,cells:row.items.map(function(c){
+      var s=sample(c.el);
+      var o={d:c.d,tl:klass(s.tl)||'?',br:klass(s.br)||'?',m:[s.m1,s.m2,s.m3].map(function(v){return klass(v)||'?';}).join(''),c:hex(s.tl)+hex(s.br)};
+      var k=(typeof c.el.className==='string'?c.el.className:'')||'';
+      var t=c.el.getAttribute('title')||c.el.getAttribute('data-title')||c.el.getAttribute('data-original-title')||'';
+      if(k){o.k=k.slice(0,80);}
+      if(t){o.t=t.slice(0,160);}
+      return o;
+    })};
+  });
+  saved.forEach(function(s){s[0].scrollLeft=s[1];s[0].scrollTop=s[2];});
+  W.scrollTo(wx,wy);
+  var data={type:'everest-scrape',v:1,url:location.href.split('?')[0],at:new Date().toISOString(),head:head,ml:ml,months:months,rows:outRows};
+  var json=JSON.stringify(data);
+  var nIn=0,nOut=0,nUnk=0,nCells=0;
+  outRows.forEach(function(r){r.cells.forEach(function(c){nCells++;
+    var kk=' '+(c.k||'')+' ';
+    if(/planning1-item-day/.test(kk)){
+      if(/\sisArrivalDeparture\s/.test(kk)){nIn++;nOut++;}else if(/\sisArrival\s/.test(kk)){nIn++;}else if(/\sisDeparture\s/.test(kk)){nOut++;}
+      return;}
+    if(c.tl==='G'&&c.br==='R'){nIn++;}else if(c.tl==='R'&&c.br==='G'){nOut++;}
+    else if(c.tl==='R'&&c.br==='R'&&c.m.indexOf('G')>=0){nIn++;nOut++;}
+    else if(!((c.tl==='R'||c.tl==='G')&&(c.br==='R'||c.br==='G'))){nUnk++;}});});
+  function debugInfo(){
+    var ex=rows.length?rows[0].items.slice(0,4).map(function(c){
+      var el=c.el,list=[el].concat(Array.prototype.slice.call(el.querySelectorAll('*'),0,6));
+      return {html:el.outerHTML.slice(0,1500),styles:list.map(function(e){var cs=W.getComputedStyle(e),b=W.getComputedStyle(e,'::before'),a=W.getComputedStyle(e,'::after');
+        return {tag:e.tagName,cls:String(e.className||''),bg:cs.backgroundColor,bi:cs.backgroundImage.slice(0,300),bd:[cs.borderTopColor,cs.borderRightColor,cs.borderBottomColor,cs.borderLeftColor,cs.borderTopWidth,cs.borderLeftWidth].join(' '),
+          before:b.content==='none'?'':[b.content,b.position,b.width,b.height,b.backgroundColor,b.backgroundImage.slice(0,200),b.borderTopColor,b.borderLeftColor,b.borderTopWidth,b.borderLeftWidth].join(' | '),
+          after:a.content==='none'?'':[a.content,a.position,a.width,a.height,a.backgroundColor,a.backgroundImage.slice(0,200),a.borderBottomColor,a.borderRightColor,a.borderBottomWidth,a.borderRightWidth].join(' | ')};})};}):[];
+    var g=rows.length?rows[0].items[0].el:null,p=g;for(var i=0;i<4&&p&&p.parentElement;i++){p=p.parentElement;}
+    return JSON.stringify({type:'everest-debug',url:location.href.split('?')[0],cellsFound:cells.length,rows:rows.length,bad:bad,examples:ex,gridHtml:p?p.outerHTML.slice(0,12000):''},null,1);
+  }
+  var old=document.getElementById('__everest_box');if(old){old.remove();}
+  var box=document.createElement('div');box.id='__everest_box';
+  box.setAttribute('style','position:fixed;top:16px;right:16px;z-index:2147483647;width:380px;max-width:calc(100vw - 32px);background:#15202a;color:#e9eef3;font:14px/1.45 system-ui,sans-serif;border-radius:10px;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.4)');
+  var ok=outRows.length>0;
+  box.innerHTML='<div style="font-weight:700;font-size:16px;margin-bottom:6px">Everest scrape</div>'+
+    (ok?'<div>Read <b>'+outRows.length+'</b> rooms × <b>'+(outRows[0].cells.length)+'</b> days ('+outRows[0].cells[0].d+'. → '+outRows[0].cells[outRows[0].cells.length-1].d+'.).<br>Check-ins: <b>'+nIn+'</b> · Check-outs: <b>'+nOut+'</b>'+(nUnk?' · <span style="color:#ffb27a">Unreadable cells: '+nUnk+'</span>':'')+'</div>':'<div style="color:#ffb27a">No booking grid found. Open the planning page with the red/green grid visible and try again.</div>')+
+    '<div id="__ev_st" style="margin:10px 0;color:#9fe3bf"></div>'+
+    '<textarea readonly style="width:100%;height:70px;font:11px monospace;background:#0d151c;color:#cfd8e0;border:1px solid #33414e;border-radius:6px"></textarea>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+
+    '<button data-a="copy" style="background:#78a9ff;color:#0b1420;border:0;border-radius:6px;padding:8px 12px;font-weight:700;cursor:pointer">Copy data</button>'+
+    '<button data-a="debug" style="background:#2a3742;color:#e9eef3;border:0;border-radius:6px;padding:8px 12px;cursor:pointer">Copy debug info</button>'+
+    '<button data-a="close" style="background:transparent;color:#9aa8b5;border:1px solid #33414e;border-radius:6px;padding:8px 12px;cursor:pointer">Close</button></div>';
+  document.body.appendChild(box);
+  var ta=box.querySelector('textarea'),st=box.querySelector('#__ev_st');ta.value=json;
+  function copy(text,label){
+    function fallback(){ta.value=text;ta.focus();ta.select();var done=false;try{done=document.execCommand('copy');}catch(e){}
+      st.style.color=done?'#9fe3bf':'#ffb27a';st.textContent=done?label+' copied. Paste it into the Check-in Board.':'Copy blocked. Select the text in the box and press Ctrl+C.';}
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(function(){st.style.color='#9fe3bf';st.textContent=label+' copied. Paste it into the Check-in Board.';},fallback);}else{fallback();}
+  }
+  box.addEventListener('click',function(e){var a=e.target.getAttribute&&e.target.getAttribute('data-a');
+    if(a==='copy'){copy(json,'Data');}else if(a==='debug'){copy(debugInfo(),'Debug info');}else if(a==='close'){box.remove();}});
+  if(ok){copy(json,'Data');}
+}
+</script>
+
+<script>
+/* ===== Board ===== */
+const $=s=>document.querySelector(s);
+const WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONL=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTHS={januar:0,january:0,jan:0,februar:1,february:1,feb:1,'märz':2,maerz:2,march:2,mar:2,'mär':2,april:3,apr:3,mai:4,may:4,juni:5,june:5,jun:5,juli:6,july:6,jul:6,august:7,aug:7,september:8,sept:8,sep:8,oktober:9,october:9,okt:9,oct:9,november:10,nov:10,dezember:11,december:11,dez:11,dec:11};
+const HOTELS=[{id:'itzling',name:'Itzling',cls:'itz'},{id:'groedig',name:'Grödig',cls:'gro'}];
+const HN={itzling:'Itzling',groedig:'Grödig'};
+const DEFAULT_NAMES=['Salah','Naim','Yasser','Ina'];
+const blank=()=>ST.names.map(()=>'');
+const ASSIGN=[{v:'I',short:'Itz',label:'Itzling'},{v:'G',short:'Grö',label:'Grödig'},{v:'F',short:'Frei',label:'Frei'}];
+const ALABEL={I:'Itzling',G:'Grödig',F:'Frei','':''};
+const LABEL={F:'Free',O:'Booked',I:'Check-in',X:'Check-out',B:'Check-out + check-in',U:'Could not read'};
+const LOCAL_KEY='hotels-board-v2';
+
+const pad=n=>String(n).padStart(2,'0');
+const iso=(y,m,d)=>new Date(Date.UTC(y,m,d)).toISOString().slice(0,10);
+const parseIso=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(Date.UTC(y,m-1,d));};
+const addDays=(s,n)=>new Date(parseIso(s).getTime()+n*864e5).toISOString().slice(0,10);
+const todayIso=(()=>{const n=new Date();return `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}`;})();
+const mondayOf=s=>{const d=parseIso(s).getUTCDay();return addDays(s,-((d+6)%7));};
+const daysIn=(y,m)=>new Date(Date.UTC(y,m+1,0)).getUTCDate();
+const fmtDate=s=>{const d=parseIso(s);return `${d.getUTCDate()} ${MON[d.getUTCMonth()]}`;};
+const wdOf=s=>WD[parseIso(s).getUTCDay()];
+const monthLabel=m=>`${MONL[+m.slice(5)-1]} ${m.slice(0,4)}`;
+const shiftMonth=(m,k)=>{let y=+m.slice(0,4),mo=+m.slice(5)-1+k;y+=Math.floor(mo/12);mo=((mo%12)+12)%12;return `${y}-${pad(mo+1)}`;};
+const short=n=>{const m=n.match(/apartment\s*\d+/i)||n.match(/(zimmer|room|app\.?|apt\.?|studio|suite|top)\s*\d+/i);return m?m[0].replace(/\s+/g,' ').replace(/^./,c=>c.toUpperCase()):(n.length>26?n.slice(0,24)+'…':n);};
+const roomNo=n=>{const m=n.match(/(?:apartment|appartement|app\.?|apt\.?|zimmer|room|top|studio|suite|nr\.?)\s*(\d+)/i);if(m)return m[1];const all=n.replace(/\(.*?\)/g,'').match(/\d+/g);return all?all[all.length-1]:short(n);};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- state ---------- */
+const ST={bookings:{},plan:{},names:['Salah','Naim','Yasser','Ina'],loaded:false,
+  tab:'plan',week:mondayOf(todayIso),month:todayIso.slice(0,7),bmonth:todayIso.slice(0,7),hotelView:'both',only:false,pending:null,readOnly:false,binAnchor:'2026-10-20'};
+let store={kind:'none'};
+try{const v=JSON.parse(localStorage.getItem('hotels-board-ui')||'{}');if(typeof v.only==='boolean')ST.only=v.only;if(v.hotelView)ST.hotelView=v.hotelView;}catch(e){}
+function saveUi(){try{localStorage.setItem('hotels-board-ui',JSON.stringify({only:ST.only,hotelView:ST.hotelView}));}catch(e){}}
+
+/* ---------- storage: shared db when available, else this browser ---------- */
+function localLoad(){try{const o=JSON.parse(localStorage.getItem(LOCAL_KEY)||'null');if(o){ST.bookings=o.bookings||{};ST.plan=o.plan||{};if(o.names)ST.names=o.names;if(o.binAnchor)ST.binAnchor=o.binAnchor;}}catch(e){}}
+function localSave(){try{localStorage.setItem(LOCAL_KEY,JSON.stringify({bookings:ST.bookings,plan:ST.plan,names:ST.names,binAnchor:ST.binAnchor}));}catch(e){}}
+const queue={};
+function writeDoc(path,data,delay){
+  const q=queue[path]||(queue[path]={data:null,timer:null,running:false});
+  q.data=data;clearTimeout(q.timer);
+  q.timer=setTimeout(()=>flush(path),delay||0);}
+async function flush(path){
+  const q=queue[path];if(q.running)return;q.running=true;
+  while(q.data){const d=q.data;q.data=null;
+    if(store.kind==='db'){
+      try{await store.db.doc(path).set(d);}
+      catch(e){handleWriteErr(e);}
+    }else localSave();}
+  q.running=false;}
+async function deleteDoc(path){
+  if(store.kind==='db'){try{await store.db.doc(path).delete();}catch(e){handleWriteErr(e);}}else localSave();}
+function handleWriteErr(e){
+  const c=e&&e.code;
+  if(c==='invalid_argument'||c==='not_granted'){ST.readOnly=true;toast('You can view this board but not change it.');render();}
+  else if(c==='quota_exceeded')toast('Storage is full. Clear old months of one hotel to make room.');
+  else toast('Could not save. Check your connection and try again.');}
+async function initStore(){
+  let db=null;
+  try{const c=window.claude;db=c&&c.use?await c.use('db'):null;}catch(e){db=null;}
+  if(!db){store={kind:'local'};localLoad();ST.loaded=true;render();return;}
+  store={kind:'db',db};
+  let got=0;const ready=()=>{if(++got>=4){ST.loaded=true;}render();};
+  const fail=e=>{if(e&&e.code==='revoked'){toast('Access to the saved data ended. Reload the page.');}};
+  db.collection('bookings').onSnapshot(s=>{const o={};s.docs.forEach(d=>{o[d.id]=d.data();});ST.bookings=o;ready();},fail);
+  db.collection('plan').onSnapshot(s=>{const o={};s.docs.forEach(d=>{o[d.id]=d.data();});ST.plan=o;ready();},fail);
+  db.doc('settings/tasks').onSnapshot(s=>{if(s.exists){const d=s.data();if(d.binAnchor)ST.binAnchor=d.binAnchor;}ready();},fail);
+  db.doc('settings/staff').onSnapshot(s=>{if(s.exists){const d=s.data();if(Array.isArray(d.names)){const n=d.names.slice(0,4);while(n.length<4)n.push(DEFAULT_NAMES[n.length]);ST.names=n;}}ready();},fail);
+  try{const u=await window.claude.use('user');if(u&&u.can){const w=await u.can('data.write');if(w===false){ST.readOnly=true;render();}}}catch(e){}
+}
+
+/* ---------- reading the scrape ---------- */
+function everestClass(k){
+  if(!k||!/planning1-item-day/.test(k))return null;
+  const s=' '+k+' ';
+  if(/\sisArrivalDeparture\s/.test(s))return 'B';
+  if(/\sisArrival\s/.test(s))return 'I';
+  if(/\sisDeparture\s/.test(s))return 'X';
+  if(/\sisBooked\s/.test(s))return 'O';
+  return 'F';}
+function kw(r){const s=((r.k||'')+' '+(r.t||'')).toLowerCase();
+  if(/arrival.?departure|anreise.?abreise/.test(s))return 'B';
+  if(/anreise|arrival|check-?in/.test(s))return 'I';
+  if(/abreise|departure|check-?out/.test(s))return 'X';
+  if(/belegt|occupied|booked|reserv/.test(s))return 'O';
+  if(/\bfrei\b|\bfree\b|available/.test(s))return 'F';
+  return null;}
+function codeOf(r){
+  const c=everestClass(r.k);if(c)return c;
+  const tl=r.tl,br=r.br;
+  if(tl==='R'&&br==='R')return (r.m||'').includes('G')?'B':'O';
+  if(tl==='G'&&br==='G')return 'F';
+  if(tl==='G'&&br==='R')return 'I';
+  if(tl==='R'&&br==='G')return 'X';
+  return kw(r)||'U';}
+function parseMonthText(t){
+  if(!t)return null;const s=t.toLowerCase();
+  let m=s.match(/([a-zäöü]+)\.?\s*(\d{4})/);
+  if(m&&MONTHS.hasOwnProperty(m[1]))return {y:+m[2],m:MONTHS[m[1]]};
+  m=s.match(/\b(\d{1,2})[./-](\d{4})\b/);
+  if(m&&+m[1]>=1&&+m[1]<=12)return {y:+m[2],m:+m[1]-1};
+  return null;}
+function walkDates(cells,base){
+  let y=base.y,m=base.m,prev=null;const out=[];
+  for(const c of cells){
+    if(prev!==null&&c.d<prev){m++;if(m>11){m=0;y++;}}
+    out.push(c.d>daysIn(y,m)?null:iso(y,m,c.d));prev=c.d;}
+  return out;}
+function fits(raw,base){
+  const head=(raw.head||[]).slice(0,10);
+  if(raw.rows[0].cells[0].d>daysIn(base.y,base.m))return false;
+  const ds=walkDates(head.map(h=>({d:h.d})),base);
+  return head.every((h,i)=>h.w==null||(ds[i]&&parseIso(ds[i]).getUTCDay()===h.w));}
+function resolveBase(raw){
+  const at=new Date(raw.at||Date.now());const cands=[];
+  if(raw.ml&&raw.ml[0]){const p=parseMonthText(raw.ml[0]);if(p)cands.push(p);}
+  (raw.months||[]).forEach(t=>{const p=parseMonthText(t);if(p)cands.push(p);});
+  const hasWd=(raw.head||[]).some(h=>h.w!=null);
+  for(const c of cands){if(fits(raw,c))return c;}
+  if(hasWd){for(let k=0;k<=24;k++){for(const sg of k?[1,-1]:[1]){
+    let y=at.getFullYear(),m=at.getMonth()+sg*k;y+=Math.floor(m/12);m=((m%12)+12)%12;
+    if(fits(raw,{y,m}))return {y,m};}}}
+  return {y:at.getFullYear(),m:at.getMonth()};}
+
+/* ---------- derived bookings ---------- */
+function exampleHotel(hid){
+  let seed=hid==='itzling'?7:31;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
+  const n=hid==='itzling'?10:8,rooms=[];for(let i=1;i<=n;i++)rooms.push(`Apartment ${i}`);
+  const m0=todayIso.slice(0,7),start=parseIso(m0+'-01').getTime()-6*864e5,N=6+daysIn(+m0.slice(0,4),+m0.slice(5)-1)+daysIn(+shiftMonth(m0,1).slice(0,4),+shiftMonth(m0,1).slice(5)-1);
+  const codes={};
+  rooms.forEach(r=>{const night=new Array(N).fill(0);let d=0,id=1;
+    while(d<N){d+=rnd()<0.35?0:Math.floor(rnd()*3)+1;const len=2+Math.floor(rnd()*5);for(let k=0;k<len&&d<N;k++,d++)night[d]=id;id++;}
+    codes[r]={};
+    for(let i=6;i<N;i++){const p=night[i-1],c=night[i];const ds=new Date(start+i*864e5).toISOString().slice(0,10);
+      codes[r][ds]=p&&c?(p===c?'O':'B'):p?'X':c?'I':'F';}});
+  return {rooms,codes,example:true,at:null,url:null};}
+let DER=null;
+function derive(){
+  const out={};
+  HOTELS.forEach(h=>{
+    const docs=Object.values(ST.bookings).filter(d=>d&&d.hotel===h.id).sort((a,b)=>a.month<b.month?-1:1);
+    if(!docs.length){out[h.id]=exampleHotel(h.id);return;}
+    const rooms=[],codes={};let at=null,url=null;
+    docs.forEach(d=>{
+      const [y,m]=d.month.split('-').map(Number);
+      (d.rooms||[]).forEach(r=>{
+        if(!rooms.includes(r.room))rooms.push(r.room);
+        const rec=codes[r.room]||(codes[r.room]={});
+        [...(r.codes||'')].forEach((c,i)=>{if(c!=='.')rec[iso(y,m-1,i+1)]=c;});});
+      if(!at||d.at>at){at=d.at;url=d.url;}});
+    out[h.id]={rooms,codes,example:false,at,url,months:docs.map(d=>d.month)};});
+  DER=out;return out;}
+function dayInfo(hid,d){
+  const H=DER[hid];const o={d,ins:[],outs:[],both:[],booked:0,free:0,unk:0,has:false};
+  H.rooms.forEach(r=>{const k=H.codes[r]&&H.codes[r][d];if(!k)return;o.has=true;
+    if(k==='I'){o.ins.push(r);o.booked++;}
+    else if(k==='X'){o.outs.push(r);o.free++;}
+    else if(k==='B'){o.both.push(r);o.booked++;}
+    else if(k==='O')o.booked++;
+    else if(k==='F')o.free++;
+    else o.unk++;});
+  o.nIn=o.ins.length+o.both.length;o.nOut=o.outs.length+o.both.length;
+  return o;}
+function hotelDates(hid){const s=new Set();const H=DER[hid];H.rooms.forEach(r=>Object.keys(H.codes[r]||{}).forEach(d=>s.add(d)));return [...s].sort();}
+
+/* ---------- import ---------- */
+function parseRaw(text){
+  let raw;const t=text.trim();
+  try{raw=JSON.parse(t.slice(t.indexOf('{'),t.lastIndexOf('}')+1));}catch(e){return {err:'That is not Everest scrape data. Click the Everest scrape bookmark on the planning page, then paste again.'};}
+  if(raw.type==='everest-debug')return {err:'This is debug info, not booking data. Use "Copy data" in the Everest box.'};
+  if(raw.type!=='everest-scrape'||!raw.rows||!raw.rows.length)return {err:'No rooms in this data. Make sure the grid is visible before clicking the bookmark.'};
+  return {raw};}
+function guessHotel(raw){
+  const names=raw.rows.map(r=>r.room);
+  const sc=HOTELS.map(h=>{const H=DER[h.id];if(H.example)return {id:h.id,s:0,url:false};
+    const hit=names.filter(n=>H.rooms.includes(n)).length/names.length;
+    return {id:h.id,s:hit,url:!!(raw.url&&H.url&&raw.url===H.url)};});
+  const a=sc[0],b=sc[1];
+  if(a.s>=0.6&&a.s>b.s)return a.id;
+  if(b.s>=0.6&&b.s>a.s)return b.id;
+  if(a.url&&!b.url&&a.s===b.s)return a.id;
+  if(b.url&&!a.url&&a.s===b.s)return b.id;
+  return null;}
+function handlePaste(text,hid){
+  const msg=$(hid?'#msg-'+hid:'#msg');const p=parseRaw(text);
+  if(p.err){msg.className='msg err';msg.textContent=p.err;return;}
+  const raw=p.raw;const base=resolveBase(raw);
+  const ds=walkDates(raw.rows[0].cells,base).filter(Boolean);
+  if(!hid){msg.className='msg err';msg.textContent='Paste into the Itzling box or the Grödig box.';return;}
+  ST.pending={raw,base,range:`${fmtDate(ds[0])} – ${fmtDate(ds[ds.length-1])} ${ds[ds.length-1].slice(0,4)}`,guess:null};
+  $('#paste-'+hid).value='';doImport(hid);}
+function renderAsk(){
+  const P=ST.pending,box=$('#askBox');
+  if(!P){box.innerHTML='';return;}
+  box.innerHTML=`<div class="ask"><div>${P.warn?`<div class="msg err" style="margin-bottom:4px">${esc(P.warn)}</div>`:''}<b>Which hotel is this?</b><div class="muted" style="font-size:13px">${P.raw.rows.length} rooms · ${esc(P.range)} · e.g. ${esc(short(P.raw.rows[0].room))}</div></div>
+    <div class="row-btns"><button type="button" class="itz" data-imp="itzling">Itzling</button><button type="button" class="gro" data-imp="groedig">Grödig</button><button type="button" data-imp="">Cancel</button></div></div>`;}
+function doImport(hid){
+  const P=ST.pending;if(!P)return;ST.pending=null;renderAsk();
+  if(ST.readOnly){toast('You can view this board but not change it.');return;}
+  const {raw,base}=P;const byMonth={};let unk=0;
+  raw.rows.forEach(row=>{
+    const ds=walkDates(row.cells,base);
+    row.cells.forEach((c,i)=>{const d=ds[i];if(!d)return;const m=d.slice(0,7);const code=codeOf(c);if(code==='U')unk++;
+      const bm=byMonth[m]||(byMonth[m]={});const rr=bm[row.room]||(bm[row.room]={});rr[+d.slice(8)]=code;});});
+  Object.keys(byMonth).forEach(m=>{
+    const id=`${hid}_${m}`,[y,mo]=m.split('-').map(Number),n=daysIn(y,mo-1);
+    const prev=ST.bookings[id];const prevRooms={};(prev&&prev.rooms||[]).forEach(r=>{prevRooms[r.room]=r.codes;});
+    const roomNames=raw.rows.map(r=>r.room);Object.keys(prevRooms).forEach(r=>{if(!roomNames.includes(r))roomNames.push(r);});
+    const rooms=roomNames.map(room=>{const old=prevRooms[room]||'.'.repeat(n);const nw=byMonth[m][room]||{};
+      let s='';for(let d=1;d<=n;d++)s+=nw[d]||old[d-1]||'.';return {room,codes:s};});
+    const doc={hotel:hid,month:m,at:raw.at||new Date().toISOString(),url:raw.url||'',rooms};
+    ST.bookings[id]=doc;writeDoc('bookings/'+id,doc,0);});
+  ['itzling','groedig'].forEach(x=>{$('#msg-'+x).textContent='';});$('#msg').textContent='';const msg=$('#msg-'+hid);msg.className='msg ok';
+  msg.textContent=`Imported: ${raw.rows.length} rooms, ${P.range}${P.guess?' (recognised by its room names)':''}.`+(unk?` ${unk} cells could not be read.`:'');
+  ST.bmonth=Object.keys(byMonth).sort()[0];
+  render();}
+
+/* ---------- plan helpers ---------- */
+function getA(d){const p=ST.plan[d.slice(0,7)];const a=p&&p.days&&p.days[d];const b=blank();if(Array.isArray(a))a.forEach((v,i)=>{if(i<b.length)b[i]=v||'';});return b;}
+function setA(d,person,val){
+  if(ST.readOnly){toast('You can view this board but not change it.');return;}
+  const m=d.slice(0,7);const cur=JSON.parse(JSON.stringify(ST.plan[m]||{days:{}}));cur.days=cur.days||{};
+  const a=getA(d).slice();a[person]=val;
+  if(a.every(x=>!x))delete cur.days[d];else cur.days[d]=a;
+  ST.plan[m]=cur;writeDoc('plan/'+m,cur,500);}
+function setManyA(entries){
+  if(ST.readOnly){toast('You can view this board but not change it.');return;}
+  const touched=new Set();
+  entries.forEach(([d,a])=>{const m=d.slice(0,7);if(!touched.has(m)){ST.plan[m]=JSON.parse(JSON.stringify(ST.plan[m]||{days:{}}));ST.plan[m].days=ST.plan[m].days||{};touched.add(m);}
+    if(a.every(x=>!x))delete ST.plan[m].days[d];else ST.plan[m].days[d]=a.slice();});
+  touched.forEach(m=>writeDoc('plan/'+m,ST.plan[m],0));}
+function needs(d){return HOTELS.map(h=>dayInfo(h.id,d));}
+
+/* ---------- render ---------- */
+function isEditing(){const a=document.activeElement;return !!(a&&(a.isContentEditable||(a.tagName==='INPUT'&&(a.classList.contains('note')||a.classList.contains('name')))));}
+function render(){
+  if(isEditing()){ST.renderPending=true;return;}
+  derive();
+  renderStatus();renderCards();renderAsk();
+  document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',String(t.dataset.tab===ST.tab)));
+  $('#view-plan').hidden=ST.tab!=='plan';$('#view-bookings').hidden=ST.tab!=='bookings';
+  if(ST.tab==='plan'){renderWeek();renderMonth();}else renderBookings();}
+function renderStatus(){
+  const ex=HOTELS.filter(h=>DER[h.id].example).map(h=>h.name);
+  const where=store.kind==='db'?'Saved for everyone with access to this page':store.kind==='local'?'Saved in this browser only':'Loading…';
+  $('#status').innerHTML=(ex.length?`<span class="pill example">Example data: ${ex.join(' & ')}</span>`:'<span class="pill live">Live data</span>')+
+    `<span>${ST.loaded?where:'Loading saved data…'}</span>`+(ST.readOnly?'<span class="pill">View only</span>':'');}
+function renderCards(){
+  $('#hotelCards').innerHTML='<h3>3 · Hotels</h3>'+HOTELS.map(h=>{const H=DER[h.id];
+    const ms=H.example?'':(H.months||[]).map(m=>MON[+m.slice(5)-1]+' '+m.slice(2,4)).join(', ');
+    return `<div class="hcard"><div class="nm"><span class="dot ${h.cls}"></span>${h.name}</div>
+      <div class="meta">${H.example?'Not imported yet. Showing example data.':`${H.rooms.length} rooms · ${esc(ms)}<br>Last import ${esc(new Date(H.at).toLocaleString())}`}</div>
+      ${H.example||ST.readOnly?'':`<div><button type="button" data-clear="${h.id}" style="font-size:12.5px;padding:4px 10px">Remove ${h.name} data</button></div>`}</div>`;}).join('');}
+
+const WDDE=['So','Mo','Di','Mi','Do','Fr','Sa'];
+const MONDE=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+const deDate=d=>`${+d.slice(8)}.${MONDE[+d.slice(5,7)-1]}`;
+function weekDays(){return [...Array(8)].map((_,i)=>addDays(ST.week,i-1));}
+function getNote(d,k){const p=ST.plan[d.slice(0,7)];return (p&&p.notes&&p.notes[d]&&p.notes[d][k])||'';}
+function setNote(d,k,val){
+  if(ST.readOnly){toast('You can view this board but not change it.');return;}
+  const m=d.slice(0,7);const cur=JSON.parse(JSON.stringify(ST.plan[m]||{days:{}}));cur.days=cur.days||{};cur.notes=cur.notes||{};
+  const n=Object.assign({},cur.notes[d]||{});if(val)n[k]=val;else delete n[k];
+  if(Object.keys(n).length)cur.notes[d]=n;else delete cur.notes[d];
+  ST.plan[m]=cur;writeDoc('plan/'+m,cur,300);}
+function tasksFor(d){
+  const out=[],wd=parseIso(d).getUTCDay();
+  if(wd===1)out.push({en:'Cloth counting'});
+  if(wd===2){const diff=Math.round((parseIso(d)-parseIso(ST.binAnchor))/864e5/7);if(((diff%2)+2)%2===0)out.push({en:'Bin Outside if needed'});}
+  return out;}
+function nextBinDay(){let d=todayIso;for(let i=0;i<15;i++){if(tasksFor(d).some(t=>t.en==='Bin Outside if needed'))return d;d=addDays(d,1);}return null;}
+function sortRooms(rooms){return rooms.slice().sort((a,b)=>(+roomNo(a)||0)-(+roomNo(b)||0));}
+function miniGrid(h,days){
+  const H=DER[h.id];
+  return `<div><h3 style="margin-bottom:8px;display:flex;gap:8px;align-items:center"><span class="dot ${h.cls}"></span>${h.name}${H.example?' <span class="pill example">example</span>':''}</h3>
+  <div class="scroll"><table class="grid wgrid"><thead><tr><th style="text-align:left;padding-left:10px">Apt</th>${days.map(d=>`<th class="${d===todayIso?'today-col':''}">${wdOf(d).slice(0,2)}<br>${+d.slice(8)}</th>`).join('')}</tr></thead><tbody>`+
+  sortRooms(H.rooms).map(r=>`<tr><td class="room" title="${esc(r)}">Apt ${esc(roomNo(r))}</td>${days.map(d=>{const k=H.codes[r]&&H.codes[r][d];return `<td>${k?`<div class="cell ${k}" title="Apt ${esc(roomNo(r))} · ${wdOf(d)} ${fmtDate(d)} · ${LABEL[k]}">${+d.slice(8)}</div>`:'<div class="cell"></div>'}</td>`;}).join('')}</tr>`).join('')+'</tbody></table></div></div>';}
+const SHEET_COLS=['itz','gro','na'];
+function getSheet(d,k){const p=ST.plan[d.slice(0,7)];const s=p&&p.sheet&&p.sheet[d];return s&&Object.prototype.hasOwnProperty.call(s,k)?s[k]:null;}
+function setSheet(d,k,val){
+  if(ST.readOnly){toast('You can view this board but not change it.');return;}
+  const m=d.slice(0,7);const cur=JSON.parse(JSON.stringify(ST.plan[m]||{days:{}}));cur.days=cur.days||{};cur.sheet=cur.sheet||{};
+  const s=Object.assign({},cur.sheet[d]||{});if(val===null)delete s[k];else s[k]=val;
+  if(Object.keys(s).length)cur.sheet[d]=s;else delete cur.sheet[d];
+  ST.plan[m]=cur;writeDoc('plan/'+m,cur,300);}
+function autoRow(d){
+  const a=getA(d);const initials=ST.names.map(n=>(n.trim()[0]||'?').toUpperCase());
+  const cell=(letter,hid,tasks)=>{
+    const names=ST.names.filter((_,p)=>a[p]===letter);const x=dayInfo(hid,d);const note='';
+    const noOut=x.has&&x.nOut===0;
+    let s=names.join(' + ');
+    if(tasks.length){const t=noOut?[...tasks,'no check-out']:tasks;s=(s?s+' ':'')+'('+t.join(', ')+')';}
+    else if(noOut)s=s?s+' or Frei (no check-out)':'no check-out';
+    if(note)s=s?(/^(plus|or|and|\+|&)/i.test(note)?s+' '+note:s+', '+note):note;
+    return s;};
+  return {itz:cell('I','itzling',[]),gro:cell('G','groedig',tasksFor(d).map(t=>t.en)),na:initials.filter((_,p)=>a[p]==='F').join(', ')};}
+function sheetRows(){
+  return weekDays().map(d=>{const au=autoRow(d);const r={d,wd:wdOf(d),date:fmtDate(d),edited:{}};
+    SHEET_COLS.forEach(k=>{const o=getSheet(d,k);r[k]=o===null?au[k]:o;r.edited[k]=o!==null;});return r;});}
+function renderWeek(){
+  const days=weekDays();
+  $('#wkLbl').textContent=`${wdOf(days[0])} ${fmtDate(days[0])} – ${wdOf(days[7])} ${fmtDate(days[7])} ${days[7].slice(0,4)}`;
+  $('#weekGrids').innerHTML=HOTELS.map(h=>miniGrid(h,days)).join('');
+  const info=days.map(needs);
+  const th=days.map(d=>`<th class="${d===todayIso?'today':''}">${wdOf(d)}<span class="dn">${parseIso(d).getUTCDate()}</span></th>`).join('');
+  const byNo=(a,b)=>(+roomNo(a)||0)-(+roomNo(b)||0);
+  const chips=(plain,prio,cls)=>{const all=[...plain.map(r=>[r,0]),...prio.map(r=>[r,1])].sort((a,b)=>byNo(a[0],b[0]));
+    return all.length?`<span class="rns">${all.map(([r,p])=>`<span class="rn ${p?'prio':cls}" title="${esc(short(r))}${p?(cls==='o'?' · new guest arrives today, clean first':' · previous guest leaves today'):''}">${esc(roomNo(r))}</span>`).join('')}</span>`:'';};
+  const ro=ST.readOnly?'readonly':'';
+  let rows='';
+  HOTELS.forEach((h,hi)=>{
+    const H=DER[h.id],L=h.cls[0].toUpperCase();
+    rows+=`<tr class="grp"><th class="rh" scope="rowgroup"><span class="dot ${h.cls}"></span> ${h.name}${H.example?' <span class="pill example" style="font-size:11px;padding:1px 7px">example</span>':''}</th><td colspan="8"></td></tr>`;
+    rows+=`<tr class="need"><th class="rh" scope="row">Rooms to clean</th>${info.map((o,i)=>{const x=o[hi];const people=getA(days[i]).filter(v=>v===L).length;
+      const sh=x.nOut>0&&people===0;return `<td class="n out ${sh?'short':''}" title="${x.nOut} check-outs, ${people} cleaner(s) at ${h.name}">${x.has?(x.nOut?`<b>${x.nOut}</b>`:'<span class="z">0</span>'):'–'}${chips(x.outs,x.both,'o')}</td>`;}).join('')}</tr>`;
+    rows+=`<tr><th class="rh" scope="row">Check-ins</th>${info.map(o=>{const x=o[hi];return `<td class="n in">${x.has?(x.nIn?`<b>${x.nIn}</b>`:'<span class="z">0</span>'):'–'}${chips(x.ins,x.both,'i')}</td>`;}).join('')}</tr>`;
+    rows+=`<tr><th class="rh" scope="row">Booked tonight</th>${info.map(o=>{const x=o[hi];return `<td class="n">${x.has?`${x.booked}<span class="rm">of ${x.booked+x.free+x.unk}</span>`:'–'}</td>`;}).join('')}</tr>`;
+});
+  rows+=`<tr class="grp"><th class="rh" scope="rowgroup">Cleaning team</th><td colspan="8"></td></tr>`;
+  ST.names.forEach((nm,p)=>{
+    rows+=`<tr><th class="rh" scope="row"><input class="name" id="name-${p}" value="${esc(nm)}" aria-label="Name of person ${p+1}" ${ro}></th>${days.map(d=>{const v=getA(d)[p]||'';
+      return `<td><div class="seg" role="group" aria-label="${esc(nm)} on ${wdOf(d)} ${fmtDate(d)}">${ASSIGN.map(a=>`<button type="button" class="${a.v}" aria-pressed="${v===a.v}" data-d="${d}" data-p="${p}" data-v="${a.v}" title="${a.label}">${a.short}</button>`).join('')}</div></td>`;}).join('')}</tr>`;});
+  rows+=`<tr><th class="rh" scope="row">At Itzling / Grödig</th>${days.map(d=>{const a=getA(d);const i=a.filter(v=>v==='I').length,g=a.filter(v=>v==='G').length;
+    return `<td class="n"><span style="color:var(--itz)">${i}</span> / <span style="color:var(--gro)">${g}</span></td>`;}).join('')}</tr>`;
+  $('#weekTbl').innerHTML=`<thead><tr><th class="rh">Week</th>${th}</tr></thead><tbody>${rows}</tbody>`;
+  const nb=nextBinDay();
+  $('#binInfo').innerHTML=`Bins go outside every 2nd Tuesday. Next: <b>${nb?wdOf(nb)+' '+fmtDate(nb):'–'}</b>. ${ST.readOnly?'':'<button type="button" id="binShift" style="font-size:12.5px;padding:3px 10px">Use the other Tuesday</button>'}`;
+  const sr=sheetRows();
+  const ce=ST.readOnly?'':' contenteditable="true" spellcheck="false"';
+  $('#sheet').innerHTML=`<thead><tr><th></th><th></th><th>Itzling</th><th>Grödig</th><th>Not available</th></tr></thead><tbody>`+
+    sr.map(r=>`<tr class="${r.d===todayIso?'is-today':''}"><td class="wd">${r.wd}</td><td class="dt">${r.date}</td>${SHEET_COLS.map(k=>`<td class="${r.edited[k]?'edited':''}" data-sd="${r.d}" data-sk="${k}"${ce} title="${r.edited[k]?'Your text. Clear it to go back to the automatic text.':'Click to write your own text'}">${esc(r[k])}</td>`).join('')}</tr>`).join('')+'</tbody>';
+  const anyEdit=sr.some(r=>SHEET_COLS.some(k=>r.edited[k]));$('#resetSheet').hidden=!anyEdit||ST.readOnly;}
+function sheetTsv(){return [['','','Itzling','Grödig','Not available'].join('\t'),...sheetRows().map(r=>[r.wd,r.date,r.itz,r.gro,r.na].join('\t'))].join('\n');}
+function sheetText(){return sheetRows().map(r=>`${r.wd} ${r.date}\n  Itzling: ${r.itz||'-'}\n  Grödig: ${r.gro||'-'}`+(r.na?`\n  Not available: ${r.na}`:'')).join('\n\n');}
+function renderMonth(){
+  const m=ST.month,[y,mo]=m.split('-').map(Number),n=daysIn(y,mo-1);
+  $('#monH').textContent=`Month overview · ${monthLabel(m)}`;
+  const days=[...Array(n)].map((_,i)=>iso(y,mo-1,i+1));
+  const wk=d=>parseIso(d).getUTCDay()===1&&d.slice(8)!=='01'?' wk':'';
+  const head=`<tr><th class="rh">${monthLabel(m)}</th>${days.map(d=>`<th class="${d===todayIso?'today':''}${wk(d)}">${wdOf(d).slice(0,2)}<br>${+d.slice(8)}</th>`).join('')}<th>Days</th></tr>`;
+  let body='';
+  HOTELS.forEach(h=>{body+=`<tr><td class="rh"><span class="dot ${h.cls}"></span> ${h.name} to clean</td>${days.map(d=>{const x=dayInfo(h.id,d);const rs=[...x.outs,...x.both].map(roomNo).sort((p,q)=>p-q);return `<td class="n${wk(d)}" title="${rs.length?h.name+' rooms to clean: '+rs.join(', '):''}">${x.has?(x.nOut?x.nOut:'<span class="z">0</span>'):''}</td>`;}).join('')}<td class="tot"></td></tr>`;});
+  ST.names.forEach((nm,p)=>{
+    const cnt={I:0,G:0,F:0};
+    const cells=days.map(d=>{const v=getA(d)[p]||'';if(v)cnt[v]++;return `<td class="${wk(d).trim()}"><button type="button" class="a ${v}" data-cyc="${d}" data-p="${p}" title="${esc(nm)} · ${wdOf(d)} ${fmtDate(d)}: ${ALABEL[v]||'not set'}" aria-label="${esc(nm)} ${wdOf(d)} ${fmtDate(d)}: ${ALABEL[v]||'not set'}">${v==='F'?'F':v}</button></td>`;}).join('');
+    body+=`<tr><td class="rh">${esc(nm)}</td>${cells}<td class="tot"><span style="color:var(--itz)">I ${cnt.I}</span> · <span style="color:var(--gro)">G ${cnt.G}</span> · F ${cnt.F}</td></tr>`;});
+  $('#monTbl').innerHTML=`<thead>${head}</thead><tbody>${body}</tbody>`;}
+
+function renderBookings(){
+  const hs=ST.hotelView==='both'?HOTELS:HOTELS.filter(h=>h.id===ST.hotelView);
+  // today cards
+  $('#todays').innerHTML=HOTELS.map(h=>{const x=dayInfo(h.id,todayIso);const H=DER[h.id];
+    const list=a=>a.length?a.map(short).join(', '):'None';
+    return `<div class="tcard"><div class="hd"><div style="display:flex;gap:8px;align-items:center"><span class="dot ${h.cls}"></span><h3>${h.name}</h3>${H.example?'<span class="pill example">example</span>':''}</div><span class="muted" style="font-size:13px">Today, ${wdOf(todayIso)} ${fmtDate(todayIso)} · ${x.has?`${x.booked} booked tonight`:'no data for today'}</span></div>
+      <div class="c"><div class="eyebrow">Check-ins</div><div class="big c-in">${x.nIn}</div><div class="who">${list([...x.ins,...x.both])}</div></div>
+      <div class="c"><div class="eyebrow">Check-outs</div><div class="big c-out">${x.nOut}</div><div class="who">${list([...x.outs,...x.both])}</div></div>
+      <div class="c"><div class="eyebrow">Changeovers</div><div class="big c-both">${x.both.length}</div><div class="who">${list(x.both)}</div></div></div>`;}).join('');
+  $('#hotelChips').innerHTML=[['both','Both hotels'],['itzling','Itzling'],['groedig','Grödig']].map(([v,l])=>`<button type="button" class="chip" data-hv="${v}" aria-pressed="${ST.hotelView===v}">${l}</button>`).join('');
+  const all=new Set();hs.forEach(h=>hotelDates(h.id).forEach(d=>all.add(d)));
+  const dates=[...all].sort();const months=[...new Set(dates.map(d=>d.slice(0,7)))];
+  if(ST.bmonth!=='all'&&!months.includes(ST.bmonth))ST.bmonth=months.includes(todayIso.slice(0,7))?todayIso.slice(0,7):(months[0]||'all');
+  $('#months').innerHTML=['all',...months].map(m=>`<button type="button" class="chip" data-m="${m}" aria-pressed="${ST.bmonth===m}">${m==='all'?'All dates':MON[+m.slice(5)-1]+' '+m.slice(0,4)}</button>`).join('');
+  $('#onlyMoves').checked=ST.only;
+  const view=dates.filter(d=>ST.bmonth==='all'||d.startsWith(ST.bmonth));
+  const tags=(arr,cls,pre)=>arr.map(r=>`<span class="tag ${cls}">${pre}${esc(short(r))}</span>`).join(' ');
+  const num=v=>v?v:'<span class="z">0</span>';
+  const rowsData=view.map(d=>({d,x:hs.map(h=>dayInfo(h.id,d))})).filter(r=>!ST.only||r.x.some(x=>x.nIn||x.nOut));
+  if(!rowsData.length){$('#ledger').innerHTML=`<tbody><tr><td class="empty">${dates.length?'No check-ins or check-outs in this range.':'No data yet.'}</td></tr></tbody>`;}
+  else{
+    const h1=`<tr class="h1"><th></th>${hs.map(h=>`<th colspan="4" class="bl"><span class="dot ${h.cls}"></span> ${h.name}</th>`).join('')}<th class="bl"></th></tr>`;
+    const h2=`<tr><th>Date</th>${hs.map(()=>`<th class="num bl">In</th><th class="num">Out</th><th class="num">Booked</th><th class="num">Free</th>`).join('')}<th class="bl">Rooms</th></tr>`;
+    const body=rowsData.map(({d,x})=>{const moves=x.some(o=>o.nIn||o.nOut);
+      return `<tr class="${d===todayIso?'is-today':''} ${moves?'':'quiet'}"><td class="date"><span class="wd">${wdOf(d)}</span>${fmtDate(d)}</td>
+      ${x.map(o=>`<td class="num bl c-in">${o.has?num(o.nIn):''}</td><td class="num c-out">${o.has?num(o.nOut):''}</td><td class="num">${o.has?o.booked:''}</td><td class="num">${o.has?o.free:''}</td>`).join('')}
+      <td class="bl"><div class="rooms">${x.map((o,i)=>{const pre=hs.length>1?(hs[i].id==='itzling'?'I · ':'G · '):'';return tags(o.ins,'in',pre)+' '+tags(o.both,'both',pre)+' '+tags(o.outs,'out',pre);}).join(' ')}</div></td></tr>`;}).join('');
+    $('#ledger').innerHTML=`<thead>${h1}${h2}</thead><tbody>${body}</tbody>`;}
+  // grids
+  $('#grids').innerHTML=hs.map(h=>{const H=DER[h.id];
+    const gd=hotelDates(h.id).filter(d=>ST.bmonth==='all'||d.startsWith(ST.bmonth));
+    if(!gd.length)return `<div><h3 style="margin-bottom:8px"><span class="dot ${h.cls}"></span> ${h.name}</h3><p class="muted">No data for this month.</p></div>`;
+    return `<div><h3 style="margin-bottom:8px"><span class="dot ${h.cls}"></span> ${h.name}${H.example?' <span class="pill example">example</span>':''}</h3><div class="scroll"><table class="grid"><thead><tr><th style="text-align:left;padding-left:10px">Room</th>${gd.map(d=>`<th class="${d===todayIso?'today-col':''}">${wdOf(d).slice(0,2)}<br>${+d.slice(8)}</th>`).join('')}</tr></thead><tbody>`+
+      H.rooms.map(r=>`<tr><td class="room" title="${esc(r)}">${esc(short(r))}</td>${gd.map(d=>{const k=H.codes[r]&&H.codes[r][d];return `<td>${k?`<div class="cell ${k}" title="${esc(short(r))} · ${wdOf(d)} ${fmtDate(d)} · ${LABEL[k]}">${+d.slice(8)}</div>`:'<div class="cell"></div>'}</td>`;}).join('')}</tr>`).join('')+'</tbody></table></div></div>';}).join('');}
+
+/* ---------- CSV ---------- */
+const csvCell=v=>{v=String(v);return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+function bookingDates(){const all=new Set();HOTELS.forEach(h=>hotelDates(h.id).forEach(d=>all.add(d)));return [...all].sort().filter(d=>ST.bmonth==='all'||d.startsWith(ST.bmonth));}
+function csvDaily(){
+  const L=[['Date','Weekday',...HOTELS.flatMap(h=>[h.name+' check-ins',h.name+' check-outs',h.name+' changeovers',h.name+' booked tonight',h.name+' check-in rooms',h.name+' check-out rooms'])].join(',')];
+  bookingDates().forEach(d=>L.push([d,wdOf(d),...HOTELS.flatMap(h=>{const o=dayInfo(h.id,d);return [o.nIn,o.nOut,o.both.length,o.booked,[...o.ins,...o.both].map(short).join(' / '),[...o.outs,...o.both].map(short).join(' / ')];})].map(csvCell).join(',')));
+  return L.join('\n');}
+function csvRooms(){
+  const L=[['Hotel','Room','Date','Weekday','Status'].join(',')];
+  bookingDates().forEach(d=>HOTELS.forEach(h=>{const H=DER[h.id];H.rooms.forEach(r=>{const k=H.codes[r]&&H.codes[r][d];if(k)L.push([h.name,r,d,wdOf(d),LABEL[k]].map(csvCell).join(','));});}));
+  return L.join('\n');}
+function csvMonth(){
+  const m=ST.month,[y,mo]=m.split('-').map(Number),n=daysIn(y,mo-1);
+  const L=[['Date','Weekday','Itzling rooms to clean','Grödig rooms to clean',...ST.names].map(csvCell).join(',')];
+  for(let i=1;i<=n;i++){const d=iso(y,mo-1,i);const a=getA(d);
+    L.push([d,wdOf(d),dayInfo('itzling',d).nOut,dayInfo('groedig',d).nOut,...a.map(v=>ALABEL[v]||'')].map(csvCell).join(','));}
+  return L.join('\n');}
+
+/* ---------- misc ---------- */
+let tt;
+function toast(t){const el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(tt);tt=setTimeout(()=>el.hidden=true,2600);}
+function copyText(text,label){
+  const fallback=()=>{const ta=$('#paste-itzling');ta.value=text;ta.focus();ta.select();toast('Copy blocked. The text is selected in the paste box, press Ctrl+C.');};
+  try{navigator.clipboard.writeText(text).then(()=>toast(label+' copied'),fallback);}catch(e){fallback();}}
+
+const src='('+everestScrape.toString()+')();';
+const oneLine=src.replace(/\s*\n\s*/g,' ');
+$('#bm').setAttribute('href','javascript:'+encodeURIComponent(oneLine)+'void%200');
+$('#bm').addEventListener('click',e=>{e.preventDefault();toast('Drag this button to your bookmarks bar');});
+$('#copyBm').addEventListener('click',()=>copyText('javascript:'+oneLine+'void 0','Bookmark code'));
+$('#copyConsole').addEventListener('click',()=>copyText(src,'Console code'));
+
+document.addEventListener('paste',e=>{
+  if(e.target&&e.target.closest&&e.target.closest('[contenteditable="true"]')){e.preventDefault();const t=(e.clipboardData||window.clipboardData).getData('text');document.execCommand('insertText',false,t.replace(/\s+/g,' '));return;}
+  if(e.target&&e.target.classList&&e.target.classList.contains('name'))return;
+  const t=(e.clipboardData||window.clipboardData).getData('text');
+  const box=e.target&&e.target.id&&/^paste-(itzling|groedig)$/.test(e.target.id)?e.target.id.slice(6):null;
+  if(t&&/everest-/.test(t)){e.preventDefault();handlePaste(t,box);}
+  else if(box){setTimeout(()=>{const v=$('#paste-'+box).value;if(v.trim())handlePaste(v,box);},0);}});
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.imp!==undefined){if(b.dataset.imp)doImport(b.dataset.imp);else{ST.pending=null;renderAsk();}return;}
+  if(b.dataset.tab){ST.tab=b.dataset.tab;try{history.replaceState(null,'','#'+ST.tab);}catch(_){}render();return;}
+  if(b.dataset.v&&b.dataset.d){const p=+b.dataset.p,cur=getA(b.dataset.d)[p];setA(b.dataset.d,p,cur===b.dataset.v?'':b.dataset.v);render();return;}
+  if(b.dataset.cyc){const p=+b.dataset.p,cur=getA(b.dataset.cyc)[p]||'';const order=['','I','G','F'];setA(b.dataset.cyc,p,order[(order.indexOf(cur)+1)%4]);render();return;}
+  if(b.id==='binShift'){ST.binAnchor=addDays(ST.binAnchor,7);if(store.kind==='db')writeDoc('settings/tasks',{binAnchor:ST.binAnchor},0);else localSave();render();toast('Bin day moved to the other Tuesday');return;}
+  if(b.dataset.hv){ST.hotelView=b.dataset.hv;saveUi();render();return;}
+  if(b.dataset.m){ST.bmonth=b.dataset.m;render();return;}
+  if(b.dataset.clear){
+    const hid=b.dataset.clear;
+    if(b.dataset.armed){Object.keys(ST.bookings).filter(k=>ST.bookings[k].hotel===hid).forEach(k=>{delete ST.bookings[k];deleteDoc('bookings/'+k);});toast(HN[hid]+' data removed');render();}
+    else{b.dataset.armed='1';b.textContent='Click again to remove';setTimeout(()=>{if(b.isConnected&&b.dataset.armed){delete b.dataset.armed;b.textContent='Remove '+HN[hid]+' data';}},4000);}
+    return;}});
+document.addEventListener('focusout',e=>{
+  const t=e.target;
+  if(t&&t.dataset&&t.dataset.sk){
+    const d=t.dataset.sd,k=t.dataset.sk,txt=(t.innerText||'').replace(/\s+/g,' ').trim();
+    const au=autoRow(d)[k],cur=getSheet(d,k);
+    if(txt===''||txt===au){if(cur!==null)setSheet(d,k,null);}
+    else if(txt!==cur)setSheet(d,k,txt);
+    ST.renderPending=true;}
+  if(ST.renderPending)setTimeout(()=>{if(!isEditing()){ST.renderPending=false;render();}},0);});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target&&e.target.isContentEditable){e.preventDefault();e.target.blur();}});
+$('#resetSheet').addEventListener('click',()=>{weekDays().forEach(d=>SHEET_COLS.forEach(k=>{if(getSheet(d,k)!==null)setSheet(d,k,null);}));render();toast('Your edits for this week were removed');});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.classList.contains('name')){
+    if(ST.readOnly)return;
+    const i=+t.id.split('-')[1];const v=t.value.trim()||DEFAULT_NAMES[i];
+    ST.names=ST.names.slice();ST.names[i]=v;
+    if(store.kind==='db')writeDoc('settings/staff',{names:ST.names},0);else localSave();
+    render();}
+  if(t.classList.contains('note')){setNote(t.dataset.nd,t.dataset.nk,t.value.trim());render();}
+  if(t.id==='onlyMoves'){ST.only=t.checked;saveUi();render();}});
+$('#wkPrev').addEventListener('click',()=>{ST.week=addDays(ST.week,-7);ST.month=addDays(ST.week,3).slice(0,7);render();});
+$('#wkNext').addEventListener('click',()=>{ST.week=addDays(ST.week,7);ST.month=addDays(ST.week,3).slice(0,7);render();});
+$('#wkToday').addEventListener('click',()=>{ST.week=mondayOf(todayIso);ST.month=todayIso.slice(0,7);render();});
+$('#monPrev').addEventListener('click',()=>{ST.month=shiftMonth(ST.month,-1);ST.week=mondayOf(ST.month+'-01');render();});
+$('#monNext').addEventListener('click',()=>{ST.month=shiftMonth(ST.month,1);ST.week=mondayOf(ST.month+'-01');render();});
+$('#copyPrev').addEventListener('click',()=>{const e=[];for(let i=0;i<7;i++){const d=addDays(ST.week,i);e.push([d,getA(addDays(d,-7))]);}setManyA(e);render();toast("Last week's plan copied");});
+$('#clearWeek').addEventListener('click',e=>{const b=e.currentTarget;
+  if(b.dataset.armed){delete b.dataset.armed;b.textContent='Clear this week';const en=[];for(let i=0;i<7;i++)en.push([addDays(ST.week,i),blank()]);setManyA(en);render();toast('Week cleared');}
+  else{b.dataset.armed='1';b.textContent='Click again to clear';setTimeout(()=>{if(b.dataset.armed){delete b.dataset.armed;b.textContent='Clear this week';}},4000);}});
+$('#copySheet').addEventListener('click',()=>copyText(sheetTsv(),'Week plan'));
+$('#copySheetTxt').addEventListener('click',()=>copyText(sheetText(),'Week plan text'));
+$('#copyMonth').addEventListener('click',()=>copyText(csvMonth(),'Month plan CSV'));
+$('#csvDaily').addEventListener('click',()=>copyText(csvDaily(),'Daily CSV'));
+$('#csvRooms').addEventListener('click',()=>copyText(csvRooms(),'Room-by-day CSV'));
+
+if(/^#(plan|bookings)$/.test(location.hash))ST.tab=location.hash.slice(1);
+render();
+initStore();
+</script>
+
+</body></html>
