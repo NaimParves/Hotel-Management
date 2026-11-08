@@ -1,0 +1,13 @@
+# Render.com blueprint: New > Blueprint > pick this repository.
+services:
+  - type: web
+    name: everest-board
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /api/ping
+    envVars:
+      - key: CLOUD
+        value: "1"
+      - key: ALLOWED_ORIGINS
+        value: https://naimparves.github.io

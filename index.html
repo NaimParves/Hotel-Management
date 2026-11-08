@@ -249,22 +249,25 @@ table{border-collapse:collapse;width:100%}
             <label class="fld">Username<input id="au-itzling-user" autocomplete="off"></label>
             <label class="fld">Password<input id="au-itzling-pass" type="password" autocomplete="new-password"></label>
           </div>
+          <label class="fld" id="au-itzling-codebox" hidden>Google Authenticator code <span class="hint">Everest asks for it once on a new server</span><input id="au-itzling-code" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" style="max-width:160px"></label>
         </fieldset>
         <fieldset class="hlogin gro"><legend><span class="dot gro"></span> Grödig login</legend>
           <div class="two">
             <label class="fld">Username<input id="au-groedig-user" autocomplete="off"></label>
             <label class="fld">Password<input id="au-groedig-pass" type="password" autocomplete="new-password"></label>
           </div>
+          <label class="fld" id="au-groedig-codebox" hidden>Google Authenticator code <span class="hint">Everest asks for it once on a new server</span><input id="au-groedig-code" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" style="max-width:160px"></label>
         </fieldset>
       </div>
       <div class="row-btns" style="align-items:center">
         <button type="submit" class="primary" id="au-go">Log in &amp; import both hotels</button>
-        <label class="tog"><input type="checkbox" id="au-rememberPw"> Remember passwords on this computer</label>
+        <label class="tog"><input type="checkbox" id="au-rememberPw"> Remember passwords on this device</label>
       </div>
       <p class="msg" id="au-msg" role="status"></p>
       <pre class="autolog" id="au-log" hidden></pre>
       <details class="how" id="au-settings"><summary>More settings</summary>
         <div style="display:grid;gap:10px;margin-top:10px;max-width:640px">
+          <label class="fld" id="au-server-row" style="max-width:420px">Board server address <span class="hint">Your Render.com server, used when the board is opened outside this PC</span><input id="au-server" type="url" inputmode="url" placeholder="https://everest-board.onrender.com"></label>
           <label class="fld" style="max-width:320px">Months to import
             <select id="au-months" style="font:400 14px var(--f-body);border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink);padding:8px 10px">
               <option value="1">1 month (this month)</option>
@@ -779,53 +782,76 @@ $('#clearAll').addEventListener('click',e=>{const b=e.currentTarget;
   $('#au-msg').textContent='';$('#au-log').hidden=true;
   render();toast('All bookings and plans cleared. You can import again.');});
 
-/* ---------- automatic import (needs the local server: start.bat / npm start) ---------- */
-const AU_KEY='hotels-board-auto';
+/* ---------- automatic import ----------
+   On this PC (http://localhost:3000) the board talks to the server started by start.bat.
+   Anywhere else (e.g. GitHub Pages on a phone) it talks to the cloud server (Render.com). */
+const AU_KEY='hotels-board-auto',AU_STATE_KEY='hotels-board-everest-state';
+const DEFAULT_SERVER='https://everest-board.onrender.com';
+const ON_PC=/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+function apiBase(){if(ON_PC)return '';const v=($('#au-server').value||'').trim().replace(/\/+$/,'');return v||DEFAULT_SERVER;}
 function auLoad(){let o={};try{o=JSON.parse(localStorage.getItem(AU_KEY)||'{}');}catch(e){}
   $('#au-months').value=String(o.months===2?2:1);
+  $('#au-server').value=o.server||DEFAULT_SERVER;$('#au-server-row').hidden=ON_PC;
   HOTELS.forEach(h=>{const a=(o.accounts||{})[h.id]||{};$(`#au-${h.id}-user`).value=a.username||'';
     if(a.password){$(`#au-${h.id}-pass`).value=a.password;$('#au-rememberPw').checked=true;}});}
 function auSave(){
-  const o={months:+$('#au-months').value||1,accounts:{}};
+  const o={months:+$('#au-months').value||1,server:$('#au-server').value.trim(),accounts:{}};
   HOTELS.forEach(h=>{const a={username:$(`#au-${h.id}-user`).value.trim()};
     if($('#au-rememberPw').checked)a.password=$(`#au-${h.id}-pass`).value;o.accounts[h.id]=a;});
   try{localStorage.setItem(AU_KEY,JSON.stringify(o));}catch(e){}}
+/* Everest's "trusted browser" cookies, kept on this device so the cloud server needs the code only once */
+function stateGet(){try{return JSON.parse(localStorage.getItem(AU_STATE_KEY)||'{}')||{};}catch(e){return {};}}
+function stateSet(id,st){const o=stateGet();o[id]=st;try{localStorage.setItem(AU_STATE_KEY,JSON.stringify(o));}catch(e){}}
+function showCode(id,on){const b=$(`#au-${id}-codebox`);b.hidden=!on;if(!on)$(`#au-${id}-code`).value='';}
 let AU_SERVER=false;
-async function auPing(){
+async function auPing(wait){
   if(location.protocol==='file:'){AU_SERVER=false;}
-  else{try{const r=await fetch('/api/ping',{cache:'no-store'});AU_SERVER=r.ok&&(await r.json()).ok;}catch(e){AU_SERVER=false;}}
-  if(AU_SERVER){$('#au-note').textContent='Fill in one hotel or both. Each login opens that hotel\'s Everest planning page and reads it automatically. Logins are only sent to the board server running on this computer.';}
-  else{$('#au-note').innerHTML='<b style="color:var(--out)">The local board server is not running.</b> Double-click <b>start.bat</b> in the project folder and use the board at <b>http://localhost:3000</b>.';}}
+  else{const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),wait?90000:8000);
+    try{const r=await fetch(apiBase()+'/api/ping',{cache:'no-store',signal:ctl.signal});AU_SERVER=r.ok&&(await r.json()).ok;}catch(e){AU_SERVER=false;}
+    clearTimeout(t);}
+  const note=$('#au-note');
+  if(AU_SERVER)note.textContent=ON_PC?'Fill in one hotel or both. Each login opens that hotel\'s Everest planning page and reads it automatically. Logins are only sent to the board server running on this computer.'
+    :'Fill in one hotel or both. Each login opens that hotel\'s Everest planning page and reads it automatically. Logins go only to your own board server and are not stored there.';
+  else if(ON_PC)note.innerHTML='<b style="color:var(--out)">The local board server is not running.</b> Double-click <b>start.bat</b> in the project folder and use the board at <b>http://localhost:3000</b>.';
+  else note.innerHTML='The board server is asleep or not set up yet. Clicking <b>Log in &amp; import</b> wakes it up (can take about a minute).';}
 function auLog(lines){const el=$('#au-log');el.hidden=!lines.length;el.textContent=lines.join('\n');el.scrollTop=el.scrollHeight;}
 $('#autoForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const msg=$('#au-msg'),btn=$('#au-go');
   if(ST.readOnly){toast('You can view this board but not change it.');return;}
   auSave();
-  const hotels=HOTELS.map(h=>({id:h.id,name:h.name,username:$(`#au-${h.id}-user`).value.trim(),password:$(`#au-${h.id}-pass`).value}));
+  const states=stateGet();
+  const hotels=HOTELS.map(h=>({id:h.id,name:h.name,username:$(`#au-${h.id}-user`).value.trim(),password:$(`#au-${h.id}-pass`).value,
+    code:$(`#au-${h.id}-code`).value.trim()||undefined,state:states[h.id]||undefined}));
   const half=hotels.find(h=>!!h.username!==!!h.password);
   if(half){msg.className='msg err';msg.textContent=`${half.name}: enter both username and password.`;return;}
   const use=hotels.filter(h=>h.username&&h.password);
   if(!use.length){msg.className='msg err';msg.textContent='Enter the Everest username and password for Itzling, Grödig, or both.';return;}
   const body={months:+$('#au-months').value||1,hotels:use};
-  await auPing();
-  if(!AU_SERVER){msg.className='msg err';msg.textContent='The board server is not running. Double-click start.bat in the Hotel-Management folder, keep its window open, then try again.';return;}
-  btn.disabled=true;btn.textContent='Importing… (about a minute per hotel)';msg.className='msg';msg.textContent='Logging in to Everest: '+use.map(h=>h.name).join(', ')+'… If Everest asks for a Google Authenticator code, an Everest window opens: type the code there and click Login.';auLog([]);
+  btn.disabled=true;
   try{
-    const r=await fetch('/api/scrape',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    btn.textContent='Connecting…';msg.className='msg';msg.textContent=ON_PC?'Connecting to the board server…':'Connecting to the board server (if it was asleep this takes about a minute)…';
+    await auPing(!ON_PC);
+    if(!AU_SERVER){msg.className='msg err';msg.textContent=ON_PC?'The board server is not running. Double-click start.bat in the Hotel-Management folder, keep its window open, then try again.'
+      :`Could not reach the board server (${apiBase()}). Check the server address under More settings, or try again in a minute.`;return;}
+    btn.textContent='Importing… (about a minute per hotel)';msg.textContent='Logging in to Everest: '+use.map(h=>h.name).join(', ')+'…';auLog([]);
+    const r=await fetch(apiBase()+'/api/scrape',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const res=await r.json();auLog(res.logs||[]);
     if(!res.ok)throw new Error(res.error||'Import failed');
     const done=[],errs=[];
     res.results.forEach(h=>{
+      if(h.state)stateSet(h.id,h.state);
       if(h.error)errs.push(`${HN[h.id]}: ${h.error}`);
+      showCode(h.id,!!h.needCode);
       h.scrapes.forEach(raw=>{const o=importRaw(raw,h.id);if(o)done.push(`${HN[h.id]} ${o.rooms} rooms, ${o.range}${o.unk?` (${o.unk} unreadable cells)`:''}`);});});
     msg.className='msg '+(errs.length?'err':'ok');
     msg.textContent=(done.length?'Imported: '+done.join(' · ')+'. ':'Nothing imported. ')+errs.join(' ');
     if(done.length)toast('Everest data imported');
+    const need=res.results.find(h=>h.needCode);if(need)$(`#au-${need.id}-code`).focus();
   }catch(err){msg.className='msg err';
-    msg.textContent=err instanceof TypeError?'Lost connection to the board server during the import. Check that the start.bat window is still open (and shows no error), then try again.':err.message;}
+    msg.textContent=err instanceof TypeError?(ON_PC?'Lost connection to the board server during the import. Check that the start.bat window is still open (and shows no error), then try again.':'Lost connection to the board server during the import. Try again.'):err.message;}
   finally{btn.disabled=false;btn.textContent='Log in & import both hotels';}});
-auLoad();auPing();
+auLoad();auPing(false);
 
 render();
 initStore();

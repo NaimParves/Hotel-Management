@@ -1,5 +1,8 @@
-/* Local server for the Everest Check-in Board.
- * - Serves index.html on http://localhost:3000
+/* Server for the Everest Check-in Board.
+ * - Locally (start.bat): serves index.html on http://localhost:3000
+ * - In the cloud (CLOUD=1, e.g. Render.com): only the /api, called from the GitHub Pages board.
+ *   Nothing is stored on the server: the browser keeps Everest's "trusted browser" cookies
+ *   and sends them with each import, so the authenticator code is only needed once.
  * - POST /api/scrape logs into Everest with the given credentials in a hidden
  *   Chromium window, opens each hotel's planning page, runs everest-scrape.js
  *   there, and returns the scraped grids to the board.
@@ -11,6 +14,10 @@ const path = require('path');
 const { chromium } = require('playwright');
 
 const PORT = +process.env.PORT || 3000;
+const CLOUD = process.env.CLOUD === '1';
+const HOST = process.env.HOST || (CLOUD ? '0.0.0.0' : '127.0.0.1');
+// Pages allowed to call the API from another address (the GitHub Pages board).
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://naimparves.github.io').split(',').map(s => s.trim()).filter(Boolean);
 const ROOT = __dirname;
 const DEBUG_DIR = path.join(ROOT, 'debug');
 const PROFILE_DIR = process.env.EVEREST_PROFILE_DIR || path.join(ROOT, '.browser-profile');
@@ -20,6 +27,17 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 const STATIC = new Set(['index.html', 'everest-scrape.js']);
 
 let busy = false;
+
+function cors(req, res) {
+  const o = req.headers.origin;
+  if (o && (ALLOWED_ORIGINS.includes(o) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o))) {
+    res.setHeader('Access-Control-Allow-Origin', o);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Max-Age', '86400');
+  }
+}
 
 function send(res, code, body, type) {
   res.writeHead(code, { 'Content-Type': type || 'application/json', 'Cache-Control': 'no-store' });
@@ -42,6 +60,7 @@ const settle = async (page, extra) => {
 };
 
 async function saveDebug(page, name) {
+  if (CLOUD) return null;
   try {
     fs.mkdirSync(DEBUG_DIR, { recursive: true });
     const file = path.join(DEBUG_DIR, `${new Date().toISOString().replace(/[:.]/g, '-')}-${name}.png`);
@@ -60,7 +79,7 @@ const visiblePw = async page => {
 /* Everest (booking.onestephost.com) login: Vue form with username, password and,
  * for a browser that is not yet activated, a Google Authenticator code. On success it
  * redirects to the "goto" page with ?sid=... in the URL. */
-async function login(page, { loginUrl, username, password, interactive }, log) {
+async function login(page, { loginUrl, username, password, code, interactive }, log) {
   log('Opening the Everest login page');
   await page.goto(loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
   await settle(page);
@@ -122,8 +141,16 @@ async function login(page, { loginUrl, username, password, interactive }, log) {
 
   await clickLogin();
   let r = await waitResult();
+  if (r === 'code' && code) {
+    log('Entering the Google Authenticator code');
+    await codeField.fill(String(code).replace(/\s+/g, ''));
+    await clickLogin();
+    r = await waitResult();
+    if (r === 'code') throw Object.assign(new Error('Everest did not accept the Google Authenticator code. Type the newest code from the app and import again.'), { needCode: true });
+  }
   if (r === 'code') {
-    // Hidden browser: reopen as a visible window so the person can type the code there.
+    // Hidden browser: on this PC reopen as a visible window so the code can be typed there;
+    // in the cloud, ask the board for the code.
     if (!interactive) throw Object.assign(new Error('NEED_CODE'), { needCode: true });
     log('Everest asks for a Google Authenticator code. Type it in the Everest window that just opened and click Login (waiting up to 3 minutes).');
     for (let i = 0; i < 180; i++) {
@@ -255,7 +282,29 @@ async function clickNextMonth(page) {
 
 /* One hotel = one Everest account. Each gets its own saved browser profile, so Everest
  * remembers each browser after its first Google Authenticator code. */
+async function importHotelCloud(hotel, opts, log) {
+  const browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+  try {
+    const st = hotel.state && Array.isArray(hotel.state.cookies) ? hotel.state : undefined;
+    const ctx = await browser.newContext({ viewport: { width: 1600, height: 1000 }, bypassCSP: true, locale: 'de-AT', storageState: st });
+    const page = await ctx.newPage();
+    const tag = s => log(`${hotel.name}: ${s}`);
+    await login(page, { loginUrl: opts.loginUrl, username: hotel.username, password: hotel.password, code: hotel.code, interactive: false }, tag);
+    const scrapes = await scrapePlanning(page, hotel, opts, log);
+    const state = await ctx.storageState().catch(() => null);
+    return { scrapes, state };
+  } catch (e) {
+    if (e.needCode) {
+      if (e.message === 'NEED_CODE') e.message = 'Everest asks for a Google Authenticator code (first time on this server). Type the current code from the app in the Code box and import again.';
+    }
+    throw e;
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
+
 async function importHotel(hotel, opts, log, visible) {
+  if (CLOUD) return importHotelCloud(hotel, opts, log);
   const show = !!visible; // hidden, except when Everest asks for an authenticator code
   const ctx = await chromium.launchPersistentContext(path.join(PROFILE_DIR, hotel.id), {
     headless: !show, viewport: { width: 1600, height: 1000 }, bypassCSP: true, locale: 'de-AT',
@@ -264,8 +313,8 @@ async function importHotel(hotel, opts, log, visible) {
     const page = ctx.pages()[0] || await ctx.newPage();
     if (show) await page.bringToFront().catch(() => {});
     const tag = s => log(`${hotel.name}: ${s}`);
-    await login(page, { loginUrl: opts.loginUrl, username: hotel.username, password: hotel.password, interactive: show }, tag);
-    return await scrapePlanning(page, hotel, opts, log);
+    await login(page, { loginUrl: opts.loginUrl, username: hotel.username, password: hotel.password, code: hotel.code, interactive: show }, tag);
+    return { scrapes: await scrapePlanning(page, hotel, opts, log) };
   } catch (e) {
     if (e.needCode && !visible) {
       await ctx.close().catch(() => {});
@@ -286,15 +335,17 @@ async function handleScrape(body) {
   if (!hotels.length) throw Object.assign(new Error('Enter the username and password for Itzling and/or Grödig.'), { logs });
   const results = [];
   for (const h of hotels) {
-    try { results.push({ id: h.id, scrapes: await importHotel(h, opts, log) }); }
-    catch (e) { log(`${h.name}: ${e.message}`); results.push({ id: h.id, error: e.message, scrapes: [] }); }
+    try { const r = await importHotel(h, opts, log); results.push({ id: h.id, scrapes: r.scrapes, state: r.state || undefined }); }
+    catch (e) { log(`${h.name}: ${e.message}`); results.push({ id: h.id, error: e.message, needCode: !!e.needCode, scrapes: [] }); }
   }
   return { ok: true, results, logs };
 }
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
-  if (url.pathname === '/api/ping') return send(res, 200, { ok: true });
+  cors(req, res);
+  if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
+  if (url.pathname === '/api/ping') return send(res, 200, { ok: true, cloud: CLOUD });
   if (url.pathname === '/api/scrape' && req.method === 'POST') {
     if (busy) return send(res, 409, { ok: false, error: 'An import is already running. Wait for it to finish.' });
     busy = true;
@@ -304,6 +355,7 @@ const server = http.createServer(async (req, res) => {
     finally { busy = false; }
     return;
   }
+  if (CLOUD && url.pathname === '/') return send(res, 200, 'Everest board server is running. Open the board at https://naimparves.github.io/Hotel-Management/', 'text/plain; charset=utf-8');
   const name = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname.slice(1));
   if (!STATIC.has(name)) return send(res, 404, 'Not found', 'text/plain');
   fs.readFile(path.join(ROOT, name), (err, buf) => {
@@ -322,7 +374,7 @@ server.on('error', e => {
   else console.error(e);
 });
 
-server.listen(PORT, '127.0.0.1', () => {
-  console.log(`Everest Check-in Board running at http://localhost:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(CLOUD ? `Everest board server (cloud mode) listening on ${HOST}:${PORT}` : `Everest Check-in Board running at http://localhost:${PORT}`);
   console.log('Keep this window open while you use the board. Press Ctrl+C to stop.');
 });
