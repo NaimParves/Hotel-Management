@@ -1,0 +1,14 @@
+{
+  "name": "everest-checkin-board",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Itzling & Grödig check-in board with automatic Everest import",
+  "main": "server.js",
+  "scripts": {
+    "setup": "npm install && npx playwright install chromium",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0"
+  }
+}
