@@ -60,7 +60,7 @@ const visiblePw = async page => {
 /* Everest (booking.onestephost.com) login: Vue form with username, password and,
  * for a browser that is not yet activated, a Google Authenticator code. On success it
  * redirects to the "goto" page with ?sid=... in the URL. */
-async function login(page, { loginUrl, username, password, code }, log) {
+async function login(page, { loginUrl, username, password, interactive }, log) {
   log('Opening the Everest login page');
   await page.goto(loginUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
   await settle(page);
@@ -123,14 +123,15 @@ async function login(page, { loginUrl, username, password, code }, log) {
   await clickLogin();
   let r = await waitResult();
   if (r === 'code') {
-    if (!code) {
-      throw new Error('Everest wants a Google Authenticator code for this browser (only the first time). Enter the current code in the "Code" field and click "Log in & import" again.');
+    // Hidden browser: reopen as a visible window so the person can type the code there.
+    if (!interactive) throw Object.assign(new Error('NEED_CODE'), { needCode: true });
+    log('Everest asks for a Google Authenticator code. Type it in the Everest window that just opened and click Login (waiting up to 3 minutes).');
+    for (let i = 0; i < 180; i++) {
+      await sleep(1000);
+      if (page.isClosed()) throw new Error('The Everest window was closed before the code was entered.');
+      if (/[?&]sid=/.test(page.url()) && !(await visiblePw(page))) { r = 'ok'; await settle(page, 1500); break; }
     }
-    log('Entering Google Authenticator code');
-    await codeField.fill(String(code).replace(/\s+/g, ''));
-    await clickLogin();
-    r = await waitResult();
-    if (r === 'code') throw new Error('Everest did not accept the Google Authenticator code. Enter the newest code and try again.');
+    if (r !== 'ok') throw new Error('No Google Authenticator code was entered within 3 minutes. Try again.');
   }
   if (r === 'ok') { log('Logged in'); return; }
   const shot = await saveDebug(page, 'login-failed');
@@ -197,15 +198,23 @@ async function scrapePlanning(page, hotel, opts, log) {
 
 /* One hotel = one Everest account. Each gets its own saved browser profile, so Everest
  * remembers each browser after its first Google Authenticator code. */
-async function importHotel(hotel, opts, log) {
+async function importHotel(hotel, opts, log, visible) {
+  const show = visible || !!opts.showBrowser;
   const ctx = await chromium.launchPersistentContext(path.join(PROFILE_DIR, hotel.id), {
-    headless: !opts.showBrowser, viewport: { width: 1600, height: 1000 }, bypassCSP: true, locale: 'de-AT',
+    headless: !show, viewport: { width: 1600, height: 1000 }, bypassCSP: true, locale: 'de-AT',
   });
   try {
     const page = ctx.pages()[0] || await ctx.newPage();
+    if (show) await page.bringToFront().catch(() => {});
     const tag = s => log(`${hotel.name}: ${s}`);
-    await login(page, { loginUrl: opts.loginUrl, username: hotel.username, password: hotel.password, code: hotel.code }, tag);
+    await login(page, { loginUrl: opts.loginUrl, username: hotel.username, password: hotel.password, interactive: show }, tag);
     return await scrapePlanning(page, hotel, opts, log);
+  } catch (e) {
+    if (e.needCode && !visible) {
+      await ctx.close().catch(() => {});
+      return importHotel(hotel, opts, log, true); // retry in a visible window for the code
+    }
+    throw e;
   } finally {
     await ctx.close().catch(() => {});
   }

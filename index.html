@@ -170,6 +170,9 @@ table{border-collapse:collapse;width:100%}
 .mon button.a{width:30px;height:28px;border:0;border-radius:0;padding:0;justify-content:center;font:700 12px var(--f-mono);background:transparent;color:var(--muted)}
 .mon button.a.I{background:var(--itz);color:var(--surface)}
 .mon button.a.G{background:var(--gro);color:var(--surface)}
+.mon button.a.B{background:linear-gradient(135deg,var(--itz) 50%,var(--gro) 50%);color:var(--surface);font-size:10.5px}
+.mon input.name{font:600 13.5px var(--f-body);border:1px solid transparent;background:transparent;color:var(--ink);padding:3px 6px;border-radius:5px;width:100%;min-width:90px}
+.mon input.name:hover,.mon input.name:focus{border-color:var(--line)}
 .mon button.a.F{background:var(--frei-soft);color:var(--frei)}
 .mon td.tot{font:500 12px var(--f-mono);padding:0 8px;white-space:nowrap;text-align:left}
 
@@ -240,14 +243,12 @@ table{border-collapse:collapse;width:100%}
             <label class="fld">Username<input id="au-itzling-user" autocomplete="off"></label>
             <label class="fld">Password<input id="au-itzling-pass" type="password" autocomplete="new-password"></label>
           </div>
-          <label class="fld">Code <span class="hint">Google Authenticator, only when Everest asks for it</span><input id="au-itzling-code" inputmode="numeric" placeholder="123456" style="max-width:160px"></label>
         </fieldset>
         <fieldset class="hlogin gro"><legend><span class="dot gro"></span> Grödig login</legend>
           <div class="two">
             <label class="fld">Username<input id="au-groedig-user" autocomplete="off"></label>
             <label class="fld">Password<input id="au-groedig-pass" type="password" autocomplete="new-password"></label>
           </div>
-          <label class="fld">Code <span class="hint">Google Authenticator, only when Everest asks for it</span><input id="au-groedig-code" inputmode="numeric" placeholder="123456" style="max-width:160px"></label>
         </fieldset>
       </div>
       <div class="row-btns" style="align-items:center">
@@ -356,7 +357,7 @@ table{border-collapse:collapse;width:100%}
           <button type="button" id="copyMonth">Copy month plan</button>
         </div>
       </div>
-      <p class="muted" style="font-size:13.5px;margin-bottom:12px">Click a person's day to switch it: Itzling → Grödig → Frei → empty.</p>
+      <p class="muted" style="font-size:13.5px;margin-bottom:12px">Click a person's day to switch it: Itzling (I) → Grödig (G) → both hotels (IG) → Frei (F) → empty. Click a name to rename.</p>
       <div class="scroll"><table class="mon" id="monTbl"></table></div>
     </div>
   </section>
@@ -408,7 +409,9 @@ const HN={itzling:'Itzling',groedig:'Grödig'};
 const DEFAULT_NAMES=['Salah','Naim','Yasser','Ina'];
 const blank=()=>ST.names.map(()=>'');
 const ASSIGN=[{v:'I',short:'Itz',label:'Itzling'},{v:'G',short:'Grö',label:'Grödig'},{v:'F',short:'Frei',label:'Frei'}];
-const ALABEL={I:'Itzling',G:'Grödig',F:'Frei','':''};
+const ALABEL={I:'Itzling',G:'Grödig',B:'Itzling + Grödig',F:'Frei','':''};
+/* B = the person works at both hotels that day */
+const atHotel=(v,L)=>v===L||(v==='B'&&(L==='I'||L==='G'));
 const LABEL={F:'Free',O:'Booked',I:'Check-in',X:'Check-out',B:'Check-out + check-in',U:'Could not read'};
 const LOCAL_KEY='hotels-board-v2';
 
@@ -691,7 +694,7 @@ function setSheet(d,k,val){
 function autoRow(d){
   const a=getA(d);const initials=ST.names.map(n=>(n.trim()[0]||'?').toUpperCase());
   const cell=(letter,hid,tasks)=>{
-    const names=ST.names.filter((_,p)=>a[p]===letter);const x=dayInfo(hid,d);const note='';
+    const names=ST.names.filter((_,p)=>atHotel(a[p],letter));const x=dayInfo(hid,d);const note='';
     const noOut=x.has&&x.nOut===0;
     let s=names.join(' + ');
     if(tasks.length){const t=noOut?[...tasks,'no check-out']:tasks;s=(s?s+' ':'')+'('+t.join(', ')+')';}
@@ -716,17 +719,11 @@ function renderWeek(){
   HOTELS.forEach((h,hi)=>{
     const H=DER[h.id],L=h.cls[0].toUpperCase();
     rows+=`<tr class="grp"><th class="rh" scope="rowgroup"><span class="dot ${h.cls}"></span> ${h.name}${H.example?' <span class="pill example" style="font-size:11px;padding:1px 7px">example</span>':''}</th><td colspan="8"></td></tr>`;
-    rows+=`<tr class="need"><th class="rh" scope="row">Rooms to clean</th>${info.map((o,i)=>{const x=o[hi];const people=getA(days[i]).filter(v=>v===L).length;
+    rows+=`<tr class="need"><th class="rh" scope="row">Rooms to clean</th>${info.map((o,i)=>{const x=o[hi];const people=getA(days[i]).filter(v=>atHotel(v,L)).length;
       const sh=x.nOut>0&&people===0;return `<td class="n out ${sh?'short':''}" title="${x.nOut} check-outs, ${people} cleaner(s) at ${h.name}">${x.has?(x.nOut?`<b>${x.nOut}</b>`:'<span class="z">0</span>'):'–'}${chips(x.outs,x.both,'o')}</td>`;}).join('')}</tr>`;
     rows+=`<tr><th class="rh" scope="row">Check-ins</th>${info.map(o=>{const x=o[hi];return `<td class="n in">${x.has?(x.nIn?`<b>${x.nIn}</b>`:'<span class="z">0</span>'):'–'}${chips(x.ins,x.both,'i')}</td>`;}).join('')}</tr>`;
     rows+=`<tr><th class="rh" scope="row">Booked tonight</th>${info.map(o=>{const x=o[hi];return `<td class="n">${x.has?`${x.booked}<span class="rm">of ${x.booked+x.free+x.unk}</span>`:'–'}</td>`;}).join('')}</tr>`;
 });
-  rows+=`<tr class="grp"><th class="rh" scope="rowgroup">Cleaning team</th><td colspan="8"></td></tr>`;
-  ST.names.forEach((nm,p)=>{
-    rows+=`<tr><th class="rh" scope="row"><input class="name" id="name-${p}" value="${esc(nm)}" aria-label="Name of person ${p+1}" ${ro}></th>${days.map(d=>{const v=getA(d)[p]||'';
-      return `<td><div class="seg" role="group" aria-label="${esc(nm)} on ${wdOf(d)} ${fmtDate(d)}">${ASSIGN.map(a=>`<button type="button" class="${a.v}" aria-pressed="${v===a.v}" data-d="${d}" data-p="${p}" data-v="${a.v}" title="${a.label}">${a.short}</button>`).join('')}</div></td>`;}).join('')}</tr>`;});
-  rows+=`<tr><th class="rh" scope="row">At Itzling / Grödig</th>${days.map(d=>{const a=getA(d);const i=a.filter(v=>v==='I').length,g=a.filter(v=>v==='G').length;
-    return `<td class="n"><span style="color:var(--itz)">${i}</span> / <span style="color:var(--gro)">${g}</span></td>`;}).join('')}</tr>`;
   $('#weekTbl').innerHTML=`<thead><tr><th class="rh">Week</th>${th}</tr></thead><tbody>${rows}</tbody>`;
   const nb=nextBinDay();
   $('#binInfo').innerHTML=`Bins go outside every 2nd Tuesday. Next: <b>${nb?wdOf(nb)+' '+fmtDate(nb):'–'}</b>. ${ST.readOnly?'':'<button type="button" id="binShift" style="font-size:12.5px;padding:3px 10px">Use the other Tuesday</button>'}`;
@@ -745,10 +742,11 @@ function renderMonth(){
   const head=`<tr><th class="rh">${monthLabel(m)}</th>${days.map(d=>`<th class="${d===todayIso?'today':''}${wk(d)}">${wdOf(d).slice(0,2)}<br>${+d.slice(8)}</th>`).join('')}<th>Days</th></tr>`;
   let body='';
   HOTELS.forEach(h=>{body+=`<tr><td class="rh"><span class="dot ${h.cls}"></span> ${h.name} to clean</td>${days.map(d=>{const x=dayInfo(h.id,d);const rs=[...x.outs,...x.both].map(roomNo).sort((p,q)=>p-q);return `<td class="n${wk(d)}" title="${rs.length?h.name+' rooms to clean: '+rs.join(', '):''}">${x.has?(x.nOut?x.nOut:'<span class="z">0</span>'):''}</td>`;}).join('')}<td class="tot"></td></tr>`;});
+  const ro=ST.readOnly?'readonly':'';
   ST.names.forEach((nm,p)=>{
     const cnt={I:0,G:0,F:0};
-    const cells=days.map(d=>{const v=getA(d)[p]||'';if(v)cnt[v]++;return `<td class="${wk(d).trim()}"><button type="button" class="a ${v}" data-cyc="${d}" data-p="${p}" title="${esc(nm)} · ${wdOf(d)} ${fmtDate(d)}: ${ALABEL[v]||'not set'}" aria-label="${esc(nm)} ${wdOf(d)} ${fmtDate(d)}: ${ALABEL[v]||'not set'}">${v==='F'?'F':v}</button></td>`;}).join('');
-    body+=`<tr><td class="rh">${esc(nm)}</td>${cells}<td class="tot"><span style="color:var(--itz)">I ${cnt.I}</span> · <span style="color:var(--gro)">G ${cnt.G}</span> · F ${cnt.F}</td></tr>`;});
+    const cells=days.map(d=>{const v=getA(d)[p]||'';if(atHotel(v,'I'))cnt.I++;if(atHotel(v,'G'))cnt.G++;if(v==='F')cnt.F++;return `<td class="${wk(d).trim()}"><button type="button" class="a ${v}" data-cyc="${d}" data-p="${p}" title="${esc(nm)} · ${wdOf(d)} ${fmtDate(d)}: ${ALABEL[v]||'not set'}" aria-label="${esc(nm)} ${wdOf(d)} ${fmtDate(d)}: ${ALABEL[v]||'not set'}">${v==='B'?'IG':v}</button></td>`;}).join('');
+    body+=`<tr><td class="rh"><input class="name" id="name-${p}" value="${esc(nm)}" aria-label="Name of person ${p+1}" ${ro}></td>${cells}<td class="tot"><span style="color:var(--itz)">I ${cnt.I}</span> · <span style="color:var(--gro)">G ${cnt.G}</span> · F ${cnt.F}</td></tr>`;});
   $('#monTbl').innerHTML=`<thead>${head}</thead><tbody>${body}</tbody>`;}
 
 function renderBookings(){
@@ -830,7 +828,7 @@ document.addEventListener('click',e=>{
   if(b.dataset.imp!==undefined){if(b.dataset.imp)doImport(b.dataset.imp);else{ST.pending=null;renderAsk();}return;}
   if(b.dataset.tab){ST.tab=b.dataset.tab;try{history.replaceState(null,'','#'+ST.tab);}catch(_){}render();return;}
   if(b.dataset.v&&b.dataset.d){const p=+b.dataset.p,cur=getA(b.dataset.d)[p];setA(b.dataset.d,p,cur===b.dataset.v?'':b.dataset.v);render();return;}
-  if(b.dataset.cyc){const p=+b.dataset.p,cur=getA(b.dataset.cyc)[p]||'';const order=['','I','G','F'];setA(b.dataset.cyc,p,order[(order.indexOf(cur)+1)%4]);render();return;}
+  if(b.dataset.cyc){const p=+b.dataset.p,cur=getA(b.dataset.cyc)[p]||'';const order=['','I','G','B','F'];setA(b.dataset.cyc,p,order[(order.indexOf(cur)+1)%order.length]);render();return;}
   if(b.id==='binShift'){ST.binAnchor=addDays(ST.binAnchor,7);if(store.kind==='db')writeDoc('settings/tasks',{binAnchor:ST.binAnchor},0);else localSave();render();toast('Bin day moved to the other Tuesday');return;}
   if(b.dataset.hv){ST.hotelView=b.dataset.hv;saveUi();render();return;}
   if(b.dataset.m){ST.bmonth=b.dataset.m;render();return;}
@@ -914,7 +912,7 @@ $('#autoForm').addEventListener('submit',async e=>{
   const msg=$('#au-msg'),btn=$('#au-go');
   if(ST.readOnly){toast('You can view this board but not change it.');return;}
   auSave();
-  const hotels=HOTELS.map(h=>({id:h.id,name:h.name,username:$(`#au-${h.id}-user`).value.trim(),password:$(`#au-${h.id}-pass`).value,code:$(`#au-${h.id}-code`).value.trim()}));
+  const hotels=HOTELS.map(h=>({id:h.id,name:h.name,username:$(`#au-${h.id}-user`).value.trim(),password:$(`#au-${h.id}-pass`).value}));
   const half=hotels.find(h=>!!h.username!==!!h.password);
   if(half){msg.className='msg err';msg.textContent=`${half.name}: enter both username and password.`;return;}
   const use=hotels.filter(h=>h.username&&h.password);
@@ -922,7 +920,7 @@ $('#autoForm').addEventListener('submit',async e=>{
   const body={loginUrl:$('#au-login').value.trim()||EVEREST_LOGIN,months:+$('#au-months').value||1,nextSelector:$('#au-next').value.trim(),showBrowser:$('#au-show').checked,hotels:use};
   await auPing();
   if(!AU_SERVER){msg.className='msg err';msg.textContent='The board server is not running. Double-click start.bat in the Hotel-Management folder, keep its window open, then try again.';return;}
-  btn.disabled=true;btn.textContent='Importing… (about a minute per hotel)';msg.className='msg';msg.textContent='Logging in to Everest: '+use.map(h=>h.name).join(', ')+'…';auLog([]);
+  btn.disabled=true;btn.textContent='Importing… (about a minute per hotel)';msg.className='msg';msg.textContent='Logging in to Everest: '+use.map(h=>h.name).join(', ')+'… If Everest asks for a Google Authenticator code, an Everest window opens: type the code there and click Login.';auLog([]);
   try{
     const r=await fetch('/api/scrape',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const res=await r.json();auLog(res.logs||[]);
@@ -930,7 +928,6 @@ $('#autoForm').addEventListener('submit',async e=>{
     const done=[],errs=[];
     res.results.forEach(h=>{
       if(h.error)errs.push(`${HN[h.id]}: ${h.error}`);
-      else $(`#au-${h.id}-code`).value='';
       h.scrapes.forEach(raw=>{const o=importRaw(raw,h.id);if(o)done.push(`${HN[h.id]} ${o.rooms} rooms, ${o.range}${o.unk?` (${o.unk} unreadable cells)`:''}`);});});
     msg.className='msg '+(errs.length?'err':'ok');
     msg.textContent=(done.length?'Imported: '+done.join(' · ')+'. ':'Nothing imported. ')+errs.join(' ');

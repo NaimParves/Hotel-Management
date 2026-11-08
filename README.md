@@ -16,13 +16,17 @@ Each hotel has its own Everest account, so there are two login boxes: **Itzling 
 1. Enter username and password for one hotel or both.
 2. Click **Log in & import both hotels**.
    For each hotel a hidden browser logs in to Everest, lands on that account's planning page, reads the grid and fills the board.
-3. **Google Authenticator code:** the first time, Everest asks for a code for the new browser. The board then says so — type the current code from the app into that hotel's **Code** box and click import again. After that, Everest remembers the browser and no code is needed (saved in `.browser-profile/`).
+3. **Google Authenticator code:** if Everest asks for a code (usually only the first time), an Everest window opens by itself. Type the code from the app there and click Login; the import then continues. After that Everest remembers the browser (saved in `.browser-profile/`).
 
 Under **More settings**:
 - **Months per hotel** + **"Next month" button** selector — read several months in a row.
 - **Show the browser while importing** — watch what happens if something goes wrong. Screenshots of failures are saved in `debug/`.
 
 Logins are only sent to the local server on this computer. Passwords are not saved unless you tick *Remember passwords on this computer*.
+
+## Cleaning plan
+
+Assign people in the **Month overview**: click a person's day to switch Itzling (I) → Grödig (G) → both hotels (IG) → Frei (F) → empty. Click a name to rename it.
 
 ## Clear all data
 
