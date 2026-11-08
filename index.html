@@ -274,47 +274,6 @@ table{border-collapse:collapse;width:100%}
     </form>
   </section>
 
-  <section class="panel" aria-labelledby="imp-h">
-    <details class="manual"><summary id="imp-h">Manual import (bookmark + paste)</summary>
-    <div class="imp">
-      <div class="col">
-        <h3>1 · Scrape button</h3>
-        <p class="muted" style="font-size:14px">Drag it to your bookmarks bar once. Then, on each hotel's planning page, click it. It copies that month's grid.</p>
-        <a class="bm" id="bm" href="#">⤓ Everest scrape</a>
-        <div class="row-btns">
-          <button type="button" id="copyBm">Copy bookmark code</button>
-          <button type="button" id="copyConsole">Copy console code</button>
-        </div>
-        <details class="how"><summary>Dragging doesn't work?</summary>
-          <ol>
-            <li>Click <b>Copy bookmark code</b>.</li>
-            <li>Right-click the bookmarks bar, choose <b>Add page</b>.</li>
-            <li>Name it "Everest scrape" and paste the code into the URL field.</li>
-            <li>Or: on the planning page press F12, open <b>Console</b>, paste the console code and press Enter.</li>
-          </ol>
-        </details>
-      </div>
-      <div class="col">
-        <h3>2 · Paste here</h3>
-        <div class="pbox"><label for="paste-itzling" class="nm"><span class="dot itz"></span>Itzling</label>
-          <textarea id="paste-itzling" placeholder="Paste the Itzling data here"></textarea>
-          <p class="msg" id="msg-itzling" role="status"></p></div>
-        <div class="pbox"><label for="paste-groedig" class="nm"><span class="dot gro"></span>Grödig</label>
-          <textarea id="paste-groedig" placeholder="Paste the Grödig data here"></textarea>
-          <p class="msg" id="msg-groedig" role="status"></p></div>
-        <div id="askBox"></div>
-        <p class="msg" id="msg" role="status"></p>
-      </div>
-      <div class="col" id="hotelCards"></div>
-    </div>
-    </details>
-  </section>
-
-  <div class="tabs" role="tablist">
-    <button class="tab" role="tab" id="tab-plan" aria-controls="view-plan" data-tab="plan">Cleaning plan</button>
-    <button class="tab" role="tab" id="tab-bookings" aria-controls="view-bookings" data-tab="bookings">Bookings</button>
-  </div>
-
   <!-- PLAN -->
   <section id="view-plan" role="tabpanel" aria-labelledby="tab-plan" class="stack">
     <div class="panel">
@@ -365,40 +324,9 @@ table{border-collapse:collapse;width:100%}
     </div>
   </section>
 
-  <!-- BOOKINGS -->
-  <section id="view-bookings" role="tabpanel" aria-labelledby="tab-bookings" class="stack" hidden>
-    <div class="todays" id="todays"></div>
-    <div class="panel">
-      <div class="panel-head">
-        <h2>Check-ins and check-outs by day</h2>
-        <div class="row-btns">
-          <button type="button" id="csvDaily">Copy daily CSV</button>
-          <button type="button" id="csvRooms">Copy room-by-day CSV</button>
-        </div>
-      </div>
-      <div class="controls" style="margin-bottom:14px">
-        <div class="chips" id="hotelChips" role="group" aria-label="Hotel"></div>
-        <div class="chips" id="months" role="group" aria-label="Month"></div>
-        <label class="tog"><input type="checkbox" id="onlyMoves"> Only days with check-ins or check-outs</label>
-      </div>
-      <div class="scroll"><table class="ledger" id="ledger"></table></div>
-    </div>
-    <div class="panel">
-      <div class="panel-head"><h2>Room grids</h2></div>
-      <div class="legend" style="margin-bottom:12px">
-        <span><span class="sw F"></span>Free</span>
-        <span><span class="sw O"></span>Booked (guest stays)</span>
-        <span><span class="sw I"></span>Check-in</span>
-        <span><span class="sw X"></span>Check-out</span>
-        <span><span class="sw B"></span>Check-out + check-in</span>
-      </div>
-      <div class="stack" id="grids"></div>
-    </div>
-  </section>
 </div>
 <div class="toast" id="toast" hidden></div>
 
-<script src="everest-scrape.js"></script>
 
 <script>
 /* ===== Board ===== */
@@ -531,23 +459,12 @@ function resolveBase(raw){
   return {y:at.getFullYear(),m:at.getMonth()};}
 
 /* ---------- derived bookings ---------- */
-function exampleHotel(hid){
-  let seed=hid==='itzling'?7:31;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
-  const n=hid==='itzling'?10:8,rooms=[];for(let i=1;i<=n;i++)rooms.push(`Apartment ${i}`);
-  const m0=todayIso.slice(0,7),start=parseIso(m0+'-01').getTime()-6*864e5,N=6+daysIn(+m0.slice(0,4),+m0.slice(5)-1)+daysIn(+shiftMonth(m0,1).slice(0,4),+shiftMonth(m0,1).slice(5)-1);
-  const codes={};
-  rooms.forEach(r=>{const night=new Array(N).fill(0);let d=0,id=1;
-    while(d<N){d+=rnd()<0.35?0:Math.floor(rnd()*3)+1;const len=2+Math.floor(rnd()*5);for(let k=0;k<len&&d<N;k++,d++)night[d]=id;id++;}
-    codes[r]={};
-    for(let i=6;i<N;i++){const p=night[i-1],c=night[i];const ds=new Date(start+i*864e5).toISOString().slice(0,10);
-      codes[r][ds]=p&&c?(p===c?'O':'B'):p?'X':c?'I':'F';}});
-  return {rooms,codes,example:true,at:null,url:null};}
 let DER=null;
 function derive(){
   const out={};
   HOTELS.forEach(h=>{
     const docs=Object.values(ST.bookings).filter(d=>d&&d.hotel===h.id).sort((a,b)=>a.month<b.month?-1:1);
-    if(!docs.length){out[h.id]=exampleHotel(h.id);return;}
+    if(!docs.length){out[h.id]={rooms:[],codes:{},example:true,at:null,url:null};return;}
     const rooms=[],codes={};let at=null,url=null;
     docs.forEach(d=>{
       const [y,m]=d.month.split('-').map(Number);
@@ -572,40 +489,13 @@ function dayInfo(hid,d){
 function hotelDates(hid){const s=new Set();const H=DER[hid];H.rooms.forEach(r=>Object.keys(H.codes[r]||{}).forEach(d=>s.add(d)));return [...s].sort();}
 
 /* ---------- import ---------- */
-function parseRaw(text){
-  let raw;const t=text.trim();
-  try{raw=JSON.parse(t.slice(t.indexOf('{'),t.lastIndexOf('}')+1));}catch(e){return {err:'That is not Everest scrape data. Click the Everest scrape bookmark on the planning page, then paste again.'};}
-  if(raw.type==='everest-debug')return {err:'This is debug info, not booking data. Use "Copy data" in the Everest box.'};
-  if(raw.type!=='everest-scrape'||!raw.rows||!raw.rows.length)return {err:'No rooms in this data. Make sure the grid is visible before clicking the bookmark.'};
-  return {raw};}
-function guessHotel(raw){
-  const names=raw.rows.map(r=>r.room);
-  const sc=HOTELS.map(h=>{const H=DER[h.id];if(H.example)return {id:h.id,s:0,url:false};
-    const hit=names.filter(n=>H.rooms.includes(n)).length/names.length;
-    return {id:h.id,s:hit,url:!!(raw.url&&H.url&&raw.url===H.url)};});
-  const a=sc[0],b=sc[1];
-  if(a.s>=0.6&&a.s>b.s)return a.id;
-  if(b.s>=0.6&&b.s>a.s)return b.id;
-  if(a.url&&!b.url&&a.s===b.s)return a.id;
-  if(b.url&&!a.url&&a.s===b.s)return b.id;
-  return null;}
-function handlePaste(text,hid){
-  const msg=$(hid?'#msg-'+hid:'#msg');const p=parseRaw(text);
-  if(p.err){msg.className='msg err';msg.textContent=p.err;return;}
-  if(!hid){msg.className='msg err';msg.textContent='Paste into the Itzling box or the Grödig box.';return;}
-  $('#paste-'+hid).value='';importRaw(p.raw,hid);}
 function importRaw(raw,hid){
   const base=resolveBase(raw);
   const ds=walkDates(raw.rows[0].cells,base).filter(Boolean);
   ST.pending={raw,base,range:`${fmtDate(ds[0])} – ${fmtDate(ds[ds.length-1])} ${ds[ds.length-1].slice(0,4)}`,guess:null};
   return doImport(hid);}
-function renderAsk(){
-  const P=ST.pending,box=$('#askBox');
-  if(!P){box.innerHTML='';return;}
-  box.innerHTML=`<div class="ask"><div>${P.warn?`<div class="msg err" style="margin-bottom:4px">${esc(P.warn)}</div>`:''}<b>Which hotel is this?</b><div class="muted" style="font-size:13px">${P.raw.rows.length} rooms · ${esc(P.range)} · e.g. ${esc(short(P.raw.rows[0].room))}</div></div>
-    <div class="row-btns"><button type="button" class="itz" data-imp="itzling">Itzling</button><button type="button" class="gro" data-imp="groedig">Grödig</button><button type="button" data-imp="">Cancel</button></div></div>`;}
 function doImport(hid){
-  const P=ST.pending;if(!P)return;ST.pending=null;renderAsk();
+  const P=ST.pending;if(!P)return;ST.pending=null;
   if(ST.readOnly){toast('You can view this board but not change it.');return;}
   const {raw,base}=P;const byMonth={};let unk=0;
   raw.rows.forEach(row=>{
@@ -620,9 +510,6 @@ function doImport(hid){
       let s='';for(let d=1;d<=n;d++)s+=nw[d]||old[d-1]||'.';return {room,codes:s};});
     const doc={hotel:hid,month:m,at:raw.at||new Date().toISOString(),url:raw.url||'',rooms};
     ST.bookings[id]=doc;writeDoc('bookings/'+id,doc,0);});
-  ['itzling','groedig'].forEach(x=>{$('#msg-'+x).textContent='';});$('#msg').textContent='';const msg=$('#msg-'+hid);msg.className='msg ok';
-  msg.textContent=`Imported: ${raw.rows.length} rooms, ${P.range}${P.guess?' (recognised by its room names)':''}.`+(unk?` ${unk} cells could not be read.`:'');
-  ST.bmonth=Object.keys(byMonth).sort()[0];
   render();
   return {rooms:raw.rows.length,range:P.range,unk};}
 
@@ -647,22 +534,12 @@ function isEditing(){const a=document.activeElement;return !!(a&&(a.isContentEdi
 function render(){
   if(isEditing()){ST.renderPending=true;return;}
   derive();
-  renderStatus();renderCards();renderAsk();
-  document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',String(t.dataset.tab===ST.tab)));
-  $('#view-plan').hidden=ST.tab!=='plan';$('#view-bookings').hidden=ST.tab!=='bookings';
-  if(ST.tab==='plan'){renderWeek();renderMonth();}else renderBookings();}
+  renderStatus();renderWeek();renderMonth();}
 function renderStatus(){
   const ex=HOTELS.filter(h=>DER[h.id].example).map(h=>h.name);
   const where=store.kind==='db'?'Saved for everyone with access to this page':store.kind==='local'?'Saved in this browser only':'Loading…';
-  $('#status').innerHTML=(ex.length?`<span class="pill example">Example data: ${ex.join(' & ')}</span>`:'<span class="pill live">Live data</span>')+
+  $('#status').innerHTML=(ex.length===HOTELS.length?'<span class="pill example">No data yet: log in below to import</span>':ex.length?`<span class="pill example">Not imported yet: ${ex.join(' & ')}</span>`:'<span class="pill live">Live data</span>')+
     `<span>${ST.loaded?where:'Loading saved data…'}</span>`+(ST.readOnly?'<span class="pill">View only</span>':'');}
-function renderCards(){
-  $('#hotelCards').innerHTML='<h3>3 · Hotels</h3>'+HOTELS.map(h=>{const H=DER[h.id];
-    const ms=H.example?'':(H.months||[]).map(m=>MON[+m.slice(5)-1]+' '+m.slice(2,4)).join(', ');
-    return `<div class="hcard"><div class="nm"><span class="dot ${h.cls}"></span>${h.name}</div>
-      <div class="meta">${H.example?'Not imported yet. Showing example data.':`${H.rooms.length} rooms · ${esc(ms)}<br>Last import ${esc(new Date(H.at).toLocaleString())}`}</div>
-      ${H.example||ST.readOnly?'':`<div><button type="button" data-clear="${h.id}" style="font-size:12.5px;padding:4px 10px">Remove ${h.name} data</button></div>`}</div>`;}).join('');}
-
 const WDDE=['So','Mo','Di','Mi','Do','Fr','Sa'];
 const MONDE=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
 const deDate=d=>`${+d.slice(8)}.${MONDE[+d.slice(5,7)-1]}`;
@@ -752,52 +629,6 @@ function renderMonth(){
     body+=`<tr><td class="rh"><input class="name" id="name-${p}" value="${esc(nm)}" aria-label="Name of person ${p+1}" ${ro}></td>${cells}<td class="tot"><span style="color:var(--itz)">I ${cnt.I}</span> · <span style="color:var(--gro)">G ${cnt.G}</span> · F ${cnt.F}</td></tr>`;});
   $('#monTbl').innerHTML=`<thead>${head}</thead><tbody>${body}</tbody>`;}
 
-function renderBookings(){
-  const hs=ST.hotelView==='both'?HOTELS:HOTELS.filter(h=>h.id===ST.hotelView);
-  // today cards
-  $('#todays').innerHTML=HOTELS.map(h=>{const x=dayInfo(h.id,todayIso);const H=DER[h.id];
-    const list=a=>a.length?a.map(short).join(', '):'None';
-    return `<div class="tcard"><div class="hd"><div style="display:flex;gap:8px;align-items:center"><span class="dot ${h.cls}"></span><h3>${h.name}</h3>${H.example?'<span class="pill example">example</span>':''}</div><span class="muted" style="font-size:13px">Today, ${wdOf(todayIso)} ${fmtDate(todayIso)} · ${x.has?`${x.booked} booked tonight`:'no data for today'}</span></div>
-      <div class="c"><div class="eyebrow">Check-ins</div><div class="big c-in">${x.nIn}</div><div class="who">${list([...x.ins,...x.both])}</div></div>
-      <div class="c"><div class="eyebrow">Check-outs</div><div class="big c-out">${x.nOut}</div><div class="who">${list([...x.outs,...x.both])}</div></div>
-      <div class="c"><div class="eyebrow">Changeovers</div><div class="big c-both">${x.both.length}</div><div class="who">${list(x.both)}</div></div></div>`;}).join('');
-  $('#hotelChips').innerHTML=[['both','Both hotels'],['itzling','Itzling'],['groedig','Grödig']].map(([v,l])=>`<button type="button" class="chip" data-hv="${v}" aria-pressed="${ST.hotelView===v}">${l}</button>`).join('');
-  const all=new Set();hs.forEach(h=>hotelDates(h.id).forEach(d=>all.add(d)));
-  const dates=[...all].sort();const months=[...new Set(dates.map(d=>d.slice(0,7)))];
-  if(ST.bmonth!=='all'&&!months.includes(ST.bmonth))ST.bmonth=months.includes(todayIso.slice(0,7))?todayIso.slice(0,7):(months[0]||'all');
-  $('#months').innerHTML=['all',...months].map(m=>`<button type="button" class="chip" data-m="${m}" aria-pressed="${ST.bmonth===m}">${m==='all'?'All dates':MON[+m.slice(5)-1]+' '+m.slice(0,4)}</button>`).join('');
-  $('#onlyMoves').checked=ST.only;
-  const view=dates.filter(d=>ST.bmonth==='all'||d.startsWith(ST.bmonth));
-  const tags=(arr,cls,pre)=>arr.map(r=>`<span class="tag ${cls}">${pre}${esc(short(r))}</span>`).join(' ');
-  const num=v=>v?v:'<span class="z">0</span>';
-  const rowsData=view.map(d=>({d,x:hs.map(h=>dayInfo(h.id,d))})).filter(r=>!ST.only||r.x.some(x=>x.nIn||x.nOut));
-  if(!rowsData.length){$('#ledger').innerHTML=`<tbody><tr><td class="empty">${dates.length?'No check-ins or check-outs in this range.':'No data yet.'}</td></tr></tbody>`;}
-  else{
-    const h1=`<tr class="h1"><th></th>${hs.map(h=>`<th colspan="4" class="bl"><span class="dot ${h.cls}"></span> ${h.name}</th>`).join('')}<th class="bl"></th></tr>`;
-    const h2=`<tr><th>Date</th>${hs.map(()=>`<th class="num bl">In</th><th class="num">Out</th><th class="num">Booked</th><th class="num">Free</th>`).join('')}<th class="bl">Rooms</th></tr>`;
-    const body=rowsData.map(({d,x})=>{const moves=x.some(o=>o.nIn||o.nOut);
-      return `<tr class="${d===todayIso?'is-today':''} ${moves?'':'quiet'}"><td class="date"><span class="wd">${wdOf(d)}</span>${fmtDate(d)}</td>
-      ${x.map(o=>`<td class="num bl c-in">${o.has?num(o.nIn):''}</td><td class="num c-out">${o.has?num(o.nOut):''}</td><td class="num">${o.has?o.booked:''}</td><td class="num">${o.has?o.free:''}</td>`).join('')}
-      <td class="bl"><div class="rooms">${x.map((o,i)=>{const pre=hs.length>1?(hs[i].id==='itzling'?'I · ':'G · '):'';return tags(o.ins,'in',pre)+' '+tags(o.both,'both',pre)+' '+tags(o.outs,'out',pre);}).join(' ')}</div></td></tr>`;}).join('');
-    $('#ledger').innerHTML=`<thead>${h1}${h2}</thead><tbody>${body}</tbody>`;}
-  // grids
-  $('#grids').innerHTML=hs.map(h=>{const H=DER[h.id];
-    const gd=hotelDates(h.id).filter(d=>ST.bmonth==='all'||d.startsWith(ST.bmonth));
-    if(!gd.length)return `<div><h3 style="margin-bottom:8px"><span class="dot ${h.cls}"></span> ${h.name}</h3><p class="muted">No data for this month.</p></div>`;
-    return `<div><h3 style="margin-bottom:8px"><span class="dot ${h.cls}"></span> ${h.name}${H.example?' <span class="pill example">example</span>':''}</h3><div class="scroll"><table class="grid"><thead><tr><th style="text-align:left;padding-left:10px">Room</th>${gd.map(d=>`<th class="${d===todayIso?'today-col':''}">${wdOf(d).slice(0,2)}<br>${+d.slice(8)}</th>`).join('')}</tr></thead><tbody>`+
-      H.rooms.map(r=>`<tr><td class="room" title="${esc(r)}">${esc(short(r))}</td>${gd.map(d=>{const k=H.codes[r]&&H.codes[r][d];return `<td>${k?`<div class="cell ${k}" title="${esc(short(r))} · ${wdOf(d)} ${fmtDate(d)} · ${LABEL[k]}">${+d.slice(8)}</div>`:'<div class="cell"></div>'}</td>`;}).join('')}</tr>`).join('')+'</tbody></table></div></div>';}).join('');}
-
-/* ---------- CSV ---------- */
-const csvCell=v=>{v=String(v);return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
-function bookingDates(){const all=new Set();HOTELS.forEach(h=>hotelDates(h.id).forEach(d=>all.add(d)));return [...all].sort().filter(d=>ST.bmonth==='all'||d.startsWith(ST.bmonth));}
-function csvDaily(){
-  const L=[['Date','Weekday',...HOTELS.flatMap(h=>[h.name+' check-ins',h.name+' check-outs',h.name+' changeovers',h.name+' booked tonight',h.name+' check-in rooms',h.name+' check-out rooms'])].join(',')];
-  bookingDates().forEach(d=>L.push([d,wdOf(d),...HOTELS.flatMap(h=>{const o=dayInfo(h.id,d);return [o.nIn,o.nOut,o.both.length,o.booked,[...o.ins,...o.both].map(short).join(' / '),[...o.outs,...o.both].map(short).join(' / ')];})].map(csvCell).join(',')));
-  return L.join('\n');}
-function csvRooms(){
-  const L=[['Hotel','Room','Date','Weekday','Status'].join(',')];
-  bookingDates().forEach(d=>HOTELS.forEach(h=>{const H=DER[h.id];H.rooms.forEach(r=>{const k=H.codes[r]&&H.codes[r][d];if(k)L.push([h.name,r,d,wdOf(d),LABEL[k]].map(csvCell).join(','));});}));
-  return L.join('\n');}
 function csvMonth(){
   const L=[['Date','Weekday','Itzling rooms to clean','Grödig rooms to clean',...ST.names].map(csvCell).join(',')];
   for(const d of weekDays()){const a=getA(d);
@@ -808,37 +639,19 @@ function csvMonth(){
 let tt;
 function toast(t){const el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(tt);tt=setTimeout(()=>el.hidden=true,2600);}
 function copyText(text,label){
-  const fallback=()=>{const ta=$('#paste-itzling');ta.value=text;ta.focus();ta.select();toast('Copy blocked. The text is selected in the paste box, press Ctrl+C.');};
+  const fallback=()=>{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand('copy');}catch(e){}ta.remove();toast(ok?label+' copied':'Copy blocked by the browser.');};
   try{navigator.clipboard.writeText(text).then(()=>toast(label+' copied'),fallback);}catch(e){fallback();}}
 
-const src='('+everestScrape.toString()+')();';
-const oneLine=src.replace(/\s*\n\s*/g,' ');
-$('#bm').setAttribute('href','javascript:'+encodeURIComponent(oneLine)+'void%200');
-$('#bm').addEventListener('click',e=>{e.preventDefault();toast('Drag this button to your bookmarks bar');});
-$('#copyBm').addEventListener('click',()=>copyText('javascript:'+oneLine+'void 0','Bookmark code'));
-$('#copyConsole').addEventListener('click',()=>copyText(src,'Console code'));
 
 document.addEventListener('paste',e=>{
   if(e.target&&e.target.closest&&e.target.closest('[contenteditable="true"]')){e.preventDefault();const t=(e.clipboardData||window.clipboardData).getData('text');document.execCommand('insertText',false,t.replace(/\s+/g,' '));return;}
   if(e.target&&e.target.classList&&e.target.classList.contains('name'))return;
-  const t=(e.clipboardData||window.clipboardData).getData('text');
-  const box=e.target&&e.target.id&&/^paste-(itzling|groedig)$/.test(e.target.id)?e.target.id.slice(6):null;
-  if(t&&/everest-/.test(t)){e.preventDefault();handlePaste(t,box);}
-  else if(box){setTimeout(()=>{const v=$('#paste-'+box).value;if(v.trim())handlePaste(v,box);},0);}});
+});
 document.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
-  if(b.dataset.imp!==undefined){if(b.dataset.imp)doImport(b.dataset.imp);else{ST.pending=null;renderAsk();}return;}
-  if(b.dataset.tab){ST.tab=b.dataset.tab;try{history.replaceState(null,'','#'+ST.tab);}catch(_){}render();return;}
   if(b.dataset.v&&b.dataset.d){const p=+b.dataset.p,cur=getA(b.dataset.d)[p];setA(b.dataset.d,p,cur===b.dataset.v?'':b.dataset.v);render();return;}
   if(b.dataset.cyc){const p=+b.dataset.p,cur=getA(b.dataset.cyc)[p]||'';const order=['','I','G','B','F'];setA(b.dataset.cyc,p,order[(order.indexOf(cur)+1)%order.length]);render();return;}
-  if(b.id==='binShift'){ST.binAnchor=addDays(ST.binAnchor,7);if(store.kind==='db')writeDoc('settings/tasks',{binAnchor:ST.binAnchor},0);else localSave();render();toast('Bin day moved to the other Tuesday');return;}
-  if(b.dataset.hv){ST.hotelView=b.dataset.hv;saveUi();render();return;}
-  if(b.dataset.m){ST.bmonth=b.dataset.m;render();return;}
-  if(b.dataset.clear){
-    const hid=b.dataset.clear;
-    if(b.dataset.armed){Object.keys(ST.bookings).filter(k=>ST.bookings[k].hotel===hid).forEach(k=>{delete ST.bookings[k];deleteDoc('bookings/'+k);});toast(HN[hid]+' data removed');render();}
-    else{b.dataset.armed='1';b.textContent='Click again to remove';setTimeout(()=>{if(b.isConnected&&b.dataset.armed){delete b.dataset.armed;b.textContent='Remove '+HN[hid]+' data';}},4000);}
-    return;}});
+  if(b.id==='binShift'){ST.binAnchor=addDays(ST.binAnchor,7);if(store.kind==='db')writeDoc('settings/tasks',{binAnchor:ST.binAnchor},0);else localSave();render();toast('Bin day moved to the other Tuesday');return;}});
 document.addEventListener('focusout',e=>{
   const t=e.target;
   if(t&&t.dataset&&t.dataset.sk){
@@ -859,7 +672,7 @@ document.addEventListener('change',e=>{
     if(store.kind==='db')writeDoc('settings/staff',{names:ST.names},0);else localSave();
     render();}
   if(t.classList.contains('note')){setNote(t.dataset.nd,t.dataset.nk,t.value.trim());render();}
-  if(t.id==='onlyMoves'){ST.only=t.checked;saveUi();render();}});
+});
 $('#wkPrev').addEventListener('click',()=>{ST.week=addDays(ST.week,-7);ST.month=addDays(ST.week,3).slice(0,7);render();});
 $('#wkNext').addEventListener('click',()=>{ST.week=addDays(ST.week,7);ST.month=addDays(ST.week,3).slice(0,7);render();});
 $('#wkToday').addEventListener('click',()=>{ST.week=mondayOf(todayIso);ST.month=todayIso.slice(0,7);render();});
@@ -872,8 +685,6 @@ $('#clearWeek').addEventListener('click',e=>{const b=e.currentTarget;
 $('#copySheet').addEventListener('click',()=>copyText(sheetTsv(),'Week plan'));
 $('#copySheetTxt').addEventListener('click',()=>copyText(sheetText(),'Week plan text'));
 $('#copyMonth').addEventListener('click',()=>copyText(csvMonth(),'Week plan CSV'));
-$('#csvDaily').addEventListener('click',()=>copyText(csvDaily(),'Daily CSV'));
-$('#csvRooms').addEventListener('click',()=>copyText(csvRooms(),'Room-by-day CSV'));
 
 /* ---------- clear all data ---------- */
 $('#clearAll').addEventListener('click',e=>{const b=e.currentTarget;
@@ -885,8 +696,7 @@ $('#clearAll').addEventListener('click',e=>{const b=e.currentTarget;
   ST.bookings={};ST.plan={};ST.pending=null;
   bk.forEach(k=>deleteDoc('bookings/'+k));pl.forEach(k=>deleteDoc('plan/'+k));
   if(store.kind!=='db')localSave();
-  ['itzling','groedig'].forEach(x=>{$('#paste-'+x).value='';$('#msg-'+x).textContent='';});
-  $('#msg').textContent='';$('#au-msg').textContent='';$('#au-log').hidden=true;
+  $('#au-msg').textContent='';$('#au-log').hidden=true;
   render();toast('All bookings and plans cleared. You can import again.');});
 
 /* ---------- automatic import (needs the local server: start.bat / npm start) ---------- */
@@ -907,7 +717,7 @@ async function auPing(){
   if(location.protocol==='file:'){AU_SERVER=false;}
   else{try{const r=await fetch('/api/ping',{cache:'no-store'});AU_SERVER=r.ok&&(await r.json()).ok;}catch(e){AU_SERVER=false;}}
   if(AU_SERVER){$('#au-note').textContent='Fill in one hotel or both. Each login opens that hotel\'s Everest planning page and reads it automatically. Logins are only sent to the board server running on this computer.';}
-  else{$('#au-note').innerHTML='<b style="color:var(--out)">The local board server is not running.</b> Double-click <b>start.bat</b> in the project folder and use the board at <b>http://localhost:3000</b>. Until then, use the manual import below.';}}
+  else{$('#au-note').innerHTML='<b style="color:var(--out)">The local board server is not running.</b> Double-click <b>start.bat</b> in the project folder and use the board at <b>http://localhost:3000</b>.';}}
 function auLog(lines){const el=$('#au-log');el.hidden=!lines.length;el.textContent=lines.join('\n');el.scrollTop=el.scrollHeight;}
 $('#autoForm').addEventListener('submit',async e=>{
   e.preventDefault();
@@ -939,7 +749,6 @@ $('#autoForm').addEventListener('submit',async e=>{
   finally{btn.disabled=false;btn.textContent='Log in & import both hotels';}});
 auLoad();auPing();
 
-if(/^#(plan|bookings)$/.test(location.hash))ST.tab=location.hash.slice(1);
 render();
 initStore();
 </script>

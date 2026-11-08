@@ -26,12 +26,9 @@ Logins are only sent to the local server on this computer. Passwords are not sav
 
 ## Cleaning plan
 
-Assign people in the **Month overview**: click a person's day to switch Itzling (I) → Grödig (G) → both hotels (IG) → Frei (F) → empty. Click a name to rename it.
+Assign people in the **Week overview**: click a person's day to switch Itzling (I) → Grödig (G) → both hotels (IG) → Frei (F) → empty. Click a name to rename it.
 
 ## Clear all data
 
-**Clear all data** (top right of the import panel, click twice) deletes all imported bookings and the cleaning plans so you can import fresh data. Staff names and the bin-day setting are kept.
+**Clear all data** (top right of the import panel, click twice) deletes all imported bookings and the cleaning plans (in this browser) so you can import fresh data. The board stays empty until the next import. Staff names and the bin-day setting are kept.
 
-## Manual import
-
-The old bookmark + paste import is still available under **Manual import**.
