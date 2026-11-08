@@ -170,6 +170,9 @@ table{border-collapse:collapse;width:100%}
 .mon button.a{width:30px;height:28px;border:0;border-radius:0;padding:0;justify-content:center;font:700 12px var(--f-mono);background:transparent;color:var(--muted)}
 .mon button.a.I{background:var(--itz);color:var(--surface)}
 .mon button.a.G{background:var(--gro);color:var(--surface)}
+#monTbl{width:100%}
+#monTbl td:not(.rh):not(.tot),#monTbl thead th:not(.rh){min-width:56px}
+#monTbl button.a{width:100%;height:34px;font-size:13px}
 .mon button.a.B{background:linear-gradient(135deg,var(--itz) 50%,var(--gro) 50%);color:var(--surface);font-size:10.5px}
 .mon input.name{font:600 13.5px var(--f-body);border:1px solid transparent;background:transparent;color:var(--ink);padding:3px 6px;border-radius:5px;width:100%;min-width:90px}
 .mon input.name:hover,.mon input.name:focus{border-color:var(--line)}
@@ -350,11 +353,11 @@ table{border-collapse:collapse;width:100%}
     </div>
     <div class="panel">
       <div class="panel-head">
-        <h2 id="monH">Month overview</h2>
+        <h2 id="monH">Week overview</h2>
         <div class="row-btns">
-          <button type="button" id="monPrev" aria-label="Previous month">←</button>
-          <button type="button" id="monNext" aria-label="Next month">→</button>
-          <button type="button" id="copyMonth">Copy month plan</button>
+          <button type="button" id="monPrev" aria-label="Previous week">←</button>
+          <button type="button" id="monNext" aria-label="Next week">→</button>
+          <button type="button" id="copyMonth">Copy week plan</button>
         </div>
       </div>
       <p class="muted" style="font-size:13.5px;margin-bottom:12px">Click a person's day to switch it: Itzling (I) → Grödig (G) → both hotels (IG) → Frei (F) → empty. Click a name to rename.</p>
@@ -735,11 +738,11 @@ function renderWeek(){
 function sheetTsv(){return [['','','Itzling','Grödig','Not available'].join('\t'),...sheetRows().map(r=>[r.wd,r.date,r.itz,r.gro,r.na].join('\t'))].join('\n');}
 function sheetText(){return sheetRows().map(r=>`${r.wd} ${r.date}\n  Itzling: ${r.itz||'-'}\n  Grödig: ${r.gro||'-'}`+(r.na?`\n  Not available: ${r.na}`:'')).join('\n\n');}
 function renderMonth(){
-  const m=ST.month,[y,mo]=m.split('-').map(Number),n=daysIn(y,mo-1);
-  $('#monH').textContent=`Month overview · ${monthLabel(m)}`;
-  const days=[...Array(n)].map((_,i)=>iso(y,mo-1,i+1));
-  const wk=d=>parseIso(d).getUTCDay()===1&&d.slice(8)!=='01'?' wk':'';
-  const head=`<tr><th class="rh">${monthLabel(m)}</th>${days.map(d=>`<th class="${d===todayIso?'today':''}${wk(d)}">${wdOf(d).slice(0,2)}<br>${+d.slice(8)}</th>`).join('')}<th>Days</th></tr>`;
+  /* One week, same Sunday-to-Sunday week as the rest of the cleaning plan */
+  const days=weekDays();
+  $('#monH').textContent=`Week overview · ${fmtDate(days[0])} – ${fmtDate(days[7])} ${days[7].slice(0,4)}`;
+  const wk=()=>'';
+  const head=`<tr><th class="rh">Week</th>${days.map(d=>`<th class="${d===todayIso?'today':''}">${wdOf(d).slice(0,2)}<br>${+d.slice(8)}</th>`).join('')}<th>Days</th></tr>`;
   let body='';
   HOTELS.forEach(h=>{body+=`<tr><td class="rh"><span class="dot ${h.cls}"></span> ${h.name} to clean</td>${days.map(d=>{const x=dayInfo(h.id,d);const rs=[...x.outs,...x.both].map(roomNo).sort((p,q)=>p-q);return `<td class="n${wk(d)}" title="${rs.length?h.name+' rooms to clean: '+rs.join(', '):''}">${x.has?(x.nOut?x.nOut:'<span class="z">0</span>'):''}</td>`;}).join('')}<td class="tot"></td></tr>`;});
   const ro=ST.readOnly?'readonly':'';
@@ -796,9 +799,8 @@ function csvRooms(){
   bookingDates().forEach(d=>HOTELS.forEach(h=>{const H=DER[h.id];H.rooms.forEach(r=>{const k=H.codes[r]&&H.codes[r][d];if(k)L.push([h.name,r,d,wdOf(d),LABEL[k]].map(csvCell).join(','));});}));
   return L.join('\n');}
 function csvMonth(){
-  const m=ST.month,[y,mo]=m.split('-').map(Number),n=daysIn(y,mo-1);
   const L=[['Date','Weekday','Itzling rooms to clean','Grödig rooms to clean',...ST.names].map(csvCell).join(',')];
-  for(let i=1;i<=n;i++){const d=iso(y,mo-1,i);const a=getA(d);
+  for(const d of weekDays()){const a=getA(d);
     L.push([d,wdOf(d),dayInfo('itzling',d).nOut,dayInfo('groedig',d).nOut,...a.map(v=>ALABEL[v]||'')].map(csvCell).join(','));}
   return L.join('\n');}
 
@@ -861,15 +863,15 @@ document.addEventListener('change',e=>{
 $('#wkPrev').addEventListener('click',()=>{ST.week=addDays(ST.week,-7);ST.month=addDays(ST.week,3).slice(0,7);render();});
 $('#wkNext').addEventListener('click',()=>{ST.week=addDays(ST.week,7);ST.month=addDays(ST.week,3).slice(0,7);render();});
 $('#wkToday').addEventListener('click',()=>{ST.week=mondayOf(todayIso);ST.month=todayIso.slice(0,7);render();});
-$('#monPrev').addEventListener('click',()=>{ST.month=shiftMonth(ST.month,-1);ST.week=mondayOf(ST.month+'-01');render();});
-$('#monNext').addEventListener('click',()=>{ST.month=shiftMonth(ST.month,1);ST.week=mondayOf(ST.month+'-01');render();});
+$('#monPrev').addEventListener('click',()=>$('#wkPrev').click());
+$('#monNext').addEventListener('click',()=>$('#wkNext').click());
 $('#copyPrev').addEventListener('click',()=>{const e=[];for(let i=0;i<7;i++){const d=addDays(ST.week,i);e.push([d,getA(addDays(d,-7))]);}setManyA(e);render();toast("Last week's plan copied");});
 $('#clearWeek').addEventListener('click',e=>{const b=e.currentTarget;
   if(b.dataset.armed){delete b.dataset.armed;b.textContent='Clear this week';const en=[];for(let i=0;i<7;i++)en.push([addDays(ST.week,i),blank()]);setManyA(en);render();toast('Week cleared');}
   else{b.dataset.armed='1';b.textContent='Click again to clear';setTimeout(()=>{if(b.dataset.armed){delete b.dataset.armed;b.textContent='Clear this week';}},4000);}});
 $('#copySheet').addEventListener('click',()=>copyText(sheetTsv(),'Week plan'));
 $('#copySheetTxt').addEventListener('click',()=>copyText(sheetText(),'Week plan text'));
-$('#copyMonth').addEventListener('click',()=>copyText(csvMonth(),'Month plan CSV'));
+$('#copyMonth').addEventListener('click',()=>copyText(csvMonth(),'Week plan CSV'));
 $('#csvDaily').addEventListener('click',()=>copyText(csvDaily(),'Daily CSV'));
 $('#csvRooms').addEventListener('click',()=>copyText(csvRooms(),'Room-by-day CSV'));
 
