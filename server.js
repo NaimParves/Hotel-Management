@@ -13,7 +13,7 @@ const { chromium } = require('playwright');
 const PORT = +process.env.PORT || 3000;
 const ROOT = __dirname;
 const DEBUG_DIR = path.join(ROOT, 'debug');
-const PROFILE_DIR = path.join(ROOT, '.browser-profile');
+const PROFILE_DIR = process.env.EVEREST_PROFILE_DIR || path.join(ROOT, '.browser-profile');
 const SCRAPER_SRC = fs.readFileSync(path.join(ROOT, 'everest-scrape.js'), 'utf8');
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json', '.css': 'text/css' };
@@ -178,28 +178,85 @@ async function scrapePlanning(page, hotel, opts, log) {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
     await settle(page, 1500);
   }
-  const months = Math.max(1, Math.min(12, +opts.months || 1));
+  const months = Math.max(1, Math.min(2, +opts.months || 1));
   const out = [];
+  let days = 0;
   for (let m = 0; m < months; m++) {
-    const data = await scrapeCurrent(page, log);
+    let data;
+    if (!out.length) data = await scrapeCurrent(page, log);
+    else {
+      try { data = await scrapeCurrent(page, log); }
+      catch (e) { log(`${hotel.name}: could not read the next month (${e.message}); only this month was imported`); break; }
+    }
     log(`${hotel.name}: read ${data.rows.length} rooms × ${data.rows[0].cells.length} days`);
+    // Same grid as before → the page did not move on to the next month.
+    if (out.length && signature(data) === signature(out[out.length - 1])) {
+      log(`${hotel.name}: the page did not change to the next month; only this month was imported`);
+      break;
+    }
     out.push(data);
+    days += data.rows[0].cells.length;
     if (m < months - 1) {
-      if (!opts.nextSelector) break;
-      const next = page.locator(opts.nextSelector).first();
-      if (!(await next.count())) { log(`${hotel.name}: "next month" button not found (${opts.nextSelector}), stopping`); break; }
-      log(`${hotel.name}: going to next month`);
-      await next.click();
-      await settle(page, 2000);
+      if (days >= 50) { log(`${hotel.name}: the page already shows ${days} days, no need to switch month`); break; }
+      const found = await clickNextMonth(page);
+      if (!found) { log(`${hotel.name}: could not find the "next month" arrow on the planning page; only this month was imported`); await saveDebug(page, 'no-next-button'); break; }
+      log(`${hotel.name}: going to the next month (clicked ${found})`);
+      await settle(page, 2500);
     }
   }
   return out;
 }
 
+const signature = d => JSON.stringify([d.months && d.months[0], d.ml && d.ml[0], d.rows.map(r => r.cells.map(c => c.d + (c.k || '') + c.tl + c.br).join(''))]);
+
+/* Find the planning page's "next month" control and click it. Looks for arrow-like
+ * buttons/links (›, », >, →, chevron/arrow-right icons, "weiter", "next", ...) that are
+ * visible and sit above the booking grid, preferring the one closest to the top-right
+ * of the grid's header. Returns a short description of what was clicked, or null. */
+async function clickNextMonth(page) {
+  for (const frame of page.frames()) {
+    const desc = await frame.evaluate(() => {
+      const TXT = /^(›|»|>|>>|→|⟩|❯|▶|►|⇒|weiter|vor|vorwärts|nächste[rns]?( monat)?|next( month)?|\+1 monat)$/i;
+      const CLS = /(^|[\s_-])(next|forward|weiter|right|chevron-right|angle-right|arrow-right|caret-right|angle-double-right|fa-forward|glyphicon-chevron-right|fa-step-forward)([\s_-]|$)/i;
+      const vis = el => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none' && +cs.opacity > 0.1; };
+      const cls = el => (typeof el.className === 'string' ? el.className : (el.getAttribute('class') || ''));
+      const grid = document.querySelector('.planning1-item-day');
+      const gridTop = grid ? grid.getBoundingClientRect().top + window.scrollY : Infinity;
+      const cands = [];
+      document.querySelectorAll('a,button,span,i,div,li,img,svg,input[type=button]').forEach(el => {
+        if (!vis(el) || el.closest('.datepicker, .ui-datepicker, .daterangepicker, .flatpickr-calendar, .modal:not(.in):not(.show)')) return;
+        const t = (el.innerText || el.value || '').replace(/\s+/g, ' ').trim();
+        const label = [cls(el), el.getAttribute('title') || '', el.getAttribute('aria-label') || '', el.getAttribute('alt') || '', el.getAttribute('data-original-title') || ''].join(' ');
+        const textHit = t && t.length <= 20 && TXT.test(t);
+        const clsHit = CLS.test(label) || /n[äa]chste|weiter|next/i.test(label);
+        if (!textHit && !clsHit) return;
+        if (/prev|back|zurück|left|vorig/i.test(label + ' ' + t)) return;
+        const target = el.closest('a,button,[onclick],[role=button],input[type=button]') || el;
+        if (!vis(target)) return;
+        const r = target.getBoundingClientRect(), top = r.top + window.scrollY;
+        if (r.width > 260 || r.height > 120) return;
+        // Above the grid scores best; further right scores better (next arrows usually sit right of the month name).
+        const score = (top <= gridTop + 5 ? 1000 : 0) - Math.abs(gridTop - top) / 10 + r.left / 100 + (textHit ? 5 : 0);
+        cands.push({ target, score, d: (t || label.trim()).slice(0, 40) });
+      });
+      if (!cands.length) return null;
+      cands.sort((a, b) => b.score - a.score);
+      cands[0].target.setAttribute('data-ev-next', '1');
+      return cands[0].d || 'arrow';
+    }).catch(() => null);
+    if (desc) {
+      await frame.locator('[data-ev-next]').first().click({ timeout: 5000 }).catch(() => {});
+      await frame.evaluate(() => { const e = document.querySelector('[data-ev-next]'); if (e) e.removeAttribute('data-ev-next'); }).catch(() => {});
+      return desc;
+    }
+  }
+  return null;
+}
+
 /* One hotel = one Everest account. Each gets its own saved browser profile, so Everest
  * remembers each browser after its first Google Authenticator code. */
 async function importHotel(hotel, opts, log, visible) {
-  const show = visible || !!opts.showBrowser;
+  const show = !!visible; // hidden, except when Everest asks for an authenticator code
   const ctx = await chromium.launchPersistentContext(path.join(PROFILE_DIR, hotel.id), {
     headless: !show, viewport: { width: 1600, height: 1000 }, bypassCSP: true, locale: 'de-AT',
   });
@@ -223,7 +280,8 @@ async function importHotel(hotel, opts, log, visible) {
 async function handleScrape(body) {
   const logs = [];
   const log = s => { logs.push(s); console.log('  ' + s); };
-  const opts = Object.assign({}, body, { loginUrl: body.loginUrl || EVEREST_LOGIN });
+  // EVEREST_LOGIN_URL lets a test server stand in for the real Everest.
+  const opts = Object.assign({}, body, { loginUrl: process.env.EVEREST_LOGIN_URL || EVEREST_LOGIN });
   const hotels = (body.hotels || []).filter(h => h && h.id && h.username && h.password);
   if (!hotels.length) throw Object.assign(new Error('Enter the username and password for Itzling and/or Grödig.'), { logs });
   const results = [];

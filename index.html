@@ -173,6 +173,9 @@ table{border-collapse:collapse;width:100%}
 #monTbl{width:100%}
 #monTbl td:not(.rh):not(.tot),#monTbl thead th:not(.rh){min-width:56px}
 #monTbl button.a{width:100%;height:34px;font-size:13px}
+#monTbl td:not(.rh):not(.tot){min-width:84px;vertical-align:top}
+#monTbl select.tm{display:block;width:100%;margin-top:3px;font:500 11.5px var(--f-body);color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:2px 1px;cursor:pointer}
+#monTbl select.tm.set{color:var(--ink);font-weight:700;border-color:var(--both);background:var(--both-soft)}
 .mon button.a.B{background:linear-gradient(135deg,var(--itz) 50%,var(--gro) 50%);color:var(--surface);font-size:10.5px}
 .mon input.name{font:600 13.5px var(--f-body);border:1px solid transparent;background:transparent;color:var(--ink);padding:3px 6px;border-radius:5px;width:100%;min-width:90px}
 .mon input.name:hover,.mon input.name:focus{border-color:var(--line)}
@@ -262,12 +265,11 @@ table{border-collapse:collapse;width:100%}
       <pre class="autolog" id="au-log" hidden></pre>
       <details class="how" id="au-settings"><summary>More settings</summary>
         <div style="display:grid;gap:10px;margin-top:10px;max-width:640px">
-          <div class="two">
-            <label class="fld">Months per hotel<input id="au-months" type="number" min="1" max="12" value="1"></label>
-            <label class="fld">"Next month" button (CSS selector)<input id="au-next" placeholder="e.g. .next, text=›"></label>
-          </div>
-          <label class="fld">Everest login page<input id="au-login" type="url"></label>
-          <label class="tog"><input type="checkbox" id="au-show"> Show the browser while importing (for checking)</label>
+          <label class="fld" style="max-width:320px">Months to import
+            <select id="au-months" style="font:400 14px var(--f-body);border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink);padding:8px 10px">
+              <option value="1">1 month (this month)</option>
+              <option value="2">2 months (this month + next month)</option>
+            </select></label>
         </div>
       </details>
       <p class="muted" style="font-size:13px" id="au-note">Fill in one hotel or both. Each login opens that hotel's Everest planning page and reads it automatically. Logins are only sent to the board server running on this computer.</p>
@@ -278,6 +280,14 @@ table{border-collapse:collapse;width:100%}
   <section id="view-plan" role="tabpanel" aria-labelledby="tab-plan" class="stack">
     <div class="panel">
       <div class="panel-head"><h2>Room grids</h2>
+        <div class="weeknav">
+          <button type="button" id="rgPrev" aria-label="Previous week">←</button>
+          <div class="lbl" id="rgLbl"></div>
+          <button type="button" id="rgNext" aria-label="Next week">→</button>
+          <button type="button" id="rgToday">This week</button>
+        </div>
+      </div>
+      <div class="panel-head" style="margin-top:-4px">
         <div class="legend"><span><span class="sw F"></span>Free</span><span><span class="sw O"></span>Booked</span><span><span class="sw I"></span>Check-in</span><span><span class="sw X"></span>Check-out</span><span><span class="sw B"></span>Out + in</span></div></div>
       <div class="stack" id="weekGrids"></div>
     </div>
@@ -298,7 +308,7 @@ table{border-collapse:collapse;width:100%}
         <span class="k"><span class="dot itz"></span>Itzling</span>
         <span class="k"><span class="dot gro"></span>Grödig</span>
         <span class="k"><span class="dot frei"></span>Frei (day off)</span>
-        <span>Week runs Sunday to Sunday, like the team sheet. Numbers under each count are the apartment numbers. <span class="rn prio">7</span> = guest leaves and a new guest arrives the same day (clean first). Red cell: rooms to clean but nobody assigned.</span>
+        <span>Week runs Sunday to Sunday, like the team sheet (change the days with the buttons in the Week plan). Numbers under each count are the apartment numbers. <span class="rn prio">7</span> = guest leaves and a new guest arrives the same day (clean first). Red cell: rooms to clean but nobody assigned.</span>
       </div>
       <p class="muted" id="binInfo" style="font-size:13.5px;margin-bottom:12px"></p>
       <div class="scroll"><table class="plan" id="weekTbl"></table></div>
@@ -306,7 +316,14 @@ table{border-collapse:collapse;width:100%}
     <div class="panel">
       <div class="panel-head">
         <div><h2>Week plan</h2><p class="muted" style="font-size:13.5px">Filled in from the plan above. Click any cell to write your own text; edited cells get an amber edge. Clear a cell to go back to the automatic text.</p></div>
-        <div class="row-btns"><button type="button" id="resetSheet" hidden>Undo my edits this week</button><button type="button" id="copySheet">Copy for Excel</button><button type="button" id="copySheetTxt">Copy as text</button></div>
+        <div class="row-btns" id="adjBtns" role="group" aria-label="Adjust the days of the week">
+          <button type="button" data-adj="start:-1" title="Add the day before the first day">+ Day before</button>
+          <button type="button" data-adj="start:1" title="Remove the first day">− First day</button>
+          <button type="button" data-adj="end:-1" title="Remove the last day">− Last day</button>
+          <button type="button" data-adj="end:1" title="Add the day after the last day">+ Next day</button>
+          <button type="button" id="adjReset" hidden>Back to Sun–Sun</button>
+        </div>
+        <div class="row-btns"><button type="button" id="resetSheet" hidden>Undo my edits this week</button><button type="button" id="dlSheet" class="primary">Download image</button></div>
       </div>
       <div class="scroll" style="border-color:var(--ink)"><table class="sheet" id="sheet"></table></div>
     </div>
@@ -319,7 +336,7 @@ table{border-collapse:collapse;width:100%}
           <button type="button" id="copyMonth">Copy week plan</button>
         </div>
       </div>
-      <p class="muted" style="font-size:13.5px;margin-bottom:12px">Click a person's day to switch it: Itzling (I) → Grödig (G) → both hotels (IG) → Frei (F) → empty. Click a name to rename.</p>
+      <p class="muted" style="font-size:13.5px;margin-bottom:12px">Click a person's day to switch it: Itzling (I) → Grödig (G) → both hotels (IG) → Frei (F) → empty. If someone starts later, pick the time under that day (e.g. "from 12:00"). Click a name to rename.</p>
       <div class="scroll"><table class="mon" id="monTbl"></table></div>
     </div>
   </section>
@@ -363,10 +380,10 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 
 /* ---------- state ---------- */
 const ST={bookings:{},plan:{},names:['Salah','Naim','Yasser','Ina'],loaded:false,
-  tab:'plan',week:mondayOf(todayIso),month:todayIso.slice(0,7),bmonth:todayIso.slice(0,7),hotelView:'both',only:false,pending:null,readOnly:false,binAnchor:'2026-10-20'};
+  tab:'plan',week:mondayOf(todayIso),month:todayIso.slice(0,7),bmonth:todayIso.slice(0,7),hotelView:'both',only:false,adj:{start:0,end:0},pending:null,readOnly:false,binAnchor:'2026-10-20'};
 let store={kind:'none'};
-try{const v=JSON.parse(localStorage.getItem('hotels-board-ui')||'{}');if(typeof v.only==='boolean')ST.only=v.only;if(v.hotelView)ST.hotelView=v.hotelView;}catch(e){}
-function saveUi(){try{localStorage.setItem('hotels-board-ui',JSON.stringify({only:ST.only,hotelView:ST.hotelView}));}catch(e){}}
+try{const v=JSON.parse(localStorage.getItem('hotels-board-ui')||'{}');if(typeof v.only==='boolean')ST.only=v.only;if(v.hotelView)ST.hotelView=v.hotelView;if(v.adj&&Number.isInteger(v.adj.start)&&Number.isInteger(v.adj.end))ST.adj=v.adj;}catch(e){}
+function saveUi(){try{localStorage.setItem('hotels-board-ui',JSON.stringify({only:ST.only,hotelView:ST.hotelView,adj:ST.adj}));}catch(e){}}
 
 /* ---------- storage: shared db when available, else this browser ---------- */
 function localLoad(){try{const o=JSON.parse(localStorage.getItem(LOCAL_KEY)||'null');if(o){ST.bookings=o.bookings||{};ST.plan=o.plan||{};if(o.names)ST.names=o.names;if(o.binAnchor)ST.binAnchor=o.binAnchor;}}catch(e){}}
@@ -521,11 +538,23 @@ function setA(d,person,val){
   const a=getA(d).slice();a[person]=val;
   if(a.every(x=>!x))delete cur.days[d];else cur.days[d]=a;
   ST.plan[m]=cur;writeDoc('plan/'+m,cur,500);}
-function setManyA(entries){
+/* Optional start time per person and day ("" = all day), e.g. Naim from 12:00 */
+const TIMES=(()=>{const o=[];for(let h=7;h<=20;h++)for(const m of ['00','30'])if(!(h===20&&m==='30'))o.push(pad(h)+':'+m);return o;})();
+const working=v=>v==='I'||v==='G'||v==='B';
+function getT(d){const p=ST.plan[d.slice(0,7)];const t=p&&p.times&&p.times[d];const b=blank();if(Array.isArray(t))t.forEach((v,i)=>{if(i<b.length)b[i]=v||'';});return b;}
+function setT(d,person,val){
+  if(ST.readOnly){toast('You can view this board but not change it.');return;}
+  const m=d.slice(0,7);const cur=JSON.parse(JSON.stringify(ST.plan[m]||{days:{}}));cur.days=cur.days||{};cur.times=cur.times||{};
+  const t=getT(d).slice();t[person]=val;
+  if(t.every(x=>!x))delete cur.times[d];else cur.times[d]=t;
+  ST.plan[m]=cur;writeDoc('plan/'+m,cur,300);}
+const fromTxt=(d,p)=>{const v=getA(d)[p],t=getT(d)[p];return working(v)&&t?' (from '+t+')':'';};
+function setManyA(entries,times){
   if(ST.readOnly){toast('You can view this board but not change it.');return;}
   const touched=new Set();
   entries.forEach(([d,a])=>{const m=d.slice(0,7);if(!touched.has(m)){ST.plan[m]=JSON.parse(JSON.stringify(ST.plan[m]||{days:{}}));ST.plan[m].days=ST.plan[m].days||{};touched.add(m);}
-    if(a.every(x=>!x))delete ST.plan[m].days[d];else ST.plan[m].days[d]=a.slice();});
+    if(a.every(x=>!x))delete ST.plan[m].days[d];else ST.plan[m].days[d]=a.slice();
+    const t=times&&times[d];ST.plan[m].times=ST.plan[m].times||{};if(!t||t.every(x=>!x))delete ST.plan[m].times[d];else ST.plan[m].times[d]=t.slice();});
   touched.forEach(m=>writeDoc('plan/'+m,ST.plan[m],0));}
 function needs(d){return HOTELS.map(h=>dayInfo(h.id,d));}
 
@@ -543,7 +572,8 @@ function renderStatus(){
 const WDDE=['So','Mo','Di','Mi','Do','Fr','Sa'];
 const MONDE=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
 const deDate=d=>`${+d.slice(8)}.${MONDE[+d.slice(5,7)-1]}`;
-function weekDays(){return [...Array(8)].map((_,i)=>addDays(ST.week,i-1));}
+/* The week normally runs Sunday to Sunday (8 days). ST.adj moves its first and last day. */
+function weekDays(){const n=Math.max(1,8-ST.adj.start+ST.adj.end);return [...Array(n)].map((_,i)=>addDays(ST.week,i-1+ST.adj.start));}
 function getNote(d,k){const p=ST.plan[d.slice(0,7)];return (p&&p.notes&&p.notes[d]&&p.notes[d][k])||'';}
 function setNote(d,k,val){
   if(ST.readOnly){toast('You can view this board but not change it.');return;}
@@ -560,7 +590,7 @@ function nextBinDay(){let d=todayIso;for(let i=0;i<15;i++){if(tasksFor(d).some(t
 function sortRooms(rooms){return rooms.slice().sort((a,b)=>(+roomNo(a)||0)-(+roomNo(b)||0));}
 function miniGrid(h,days){
   const H=DER[h.id];
-  return `<div><h3 style="margin-bottom:8px;display:flex;gap:8px;align-items:center"><span class="dot ${h.cls}"></span>${h.name}${H.example?' <span class="pill example">example</span>':''}</h3>
+  return `<div><h3 style="margin-bottom:8px;display:flex;gap:8px;align-items:center"><span class="dot ${h.cls}"></span>${h.name}${H.example?' <span class="pill example">not imported</span>':''}</h3>
   <div class="scroll"><table class="grid wgrid"><thead><tr><th style="text-align:left;padding-left:10px">Apt</th>${days.map(d=>`<th class="${d===todayIso?'today-col':''}">${wdOf(d).slice(0,2)}<br>${+d.slice(8)}</th>`).join('')}</tr></thead><tbody>`+
   sortRooms(H.rooms).map(r=>`<tr><td class="room" title="${esc(r)}">Apt ${esc(roomNo(r))}</td>${days.map(d=>{const k=H.codes[r]&&H.codes[r][d];return `<td>${k?`<div class="cell ${k}" title="Apt ${esc(roomNo(r))} · ${wdOf(d)} ${fmtDate(d)} · ${LABEL[k]}">${+d.slice(8)}</div>`:'<div class="cell"></div>'}</td>`;}).join('')}</tr>`).join('')+'</tbody></table></div></div>';}
 const SHEET_COLS=['itz','gro','na'];
@@ -574,7 +604,7 @@ function setSheet(d,k,val){
 function autoRow(d){
   const a=getA(d);const initials=ST.names.map(n=>(n.trim()[0]||'?').toUpperCase());
   const cell=(letter,hid,tasks)=>{
-    const names=ST.names.filter((_,p)=>atHotel(a[p],letter));const x=dayInfo(hid,d);const note='';
+    const names=ST.names.map((n,p)=>atHotel(a[p],letter)?n+fromTxt(d,p):null).filter(Boolean);const x=dayInfo(hid,d);const note='';
     const noOut=x.has&&x.nOut===0;
     let s=names.join(' + ');
     if(tasks.length){const t=noOut?[...tasks,'no check-out']:tasks;s=(s?s+' ':'')+'('+t.join(', ')+')';}
@@ -587,7 +617,7 @@ function sheetRows(){
     SHEET_COLS.forEach(k=>{const o=getSheet(d,k);r[k]=o===null?au[k]:o;r.edited[k]=o!==null;});return r;});}
 function renderWeek(){
   const days=weekDays();
-  $('#wkLbl').textContent=`${wdOf(days[0])} ${fmtDate(days[0])} – ${wdOf(days[7])} ${fmtDate(days[7])} ${days[7].slice(0,4)}`;
+  $('#wkLbl').textContent=$('#rgLbl').textContent=`${wdOf(days[0])} ${fmtDate(days[0])} – ${wdOf(days[days.length-1])} ${fmtDate(days[days.length-1])} ${days[days.length-1].slice(0,4)}`;
   $('#weekGrids').innerHTML=HOTELS.map(h=>miniGrid(h,days)).join('');
   const info=days.map(needs);
   const th=days.map(d=>`<th class="${d===todayIso?'today':''}">${wdOf(d)}<span class="dn">${parseIso(d).getUTCDate()}</span></th>`).join('');
@@ -598,7 +628,7 @@ function renderWeek(){
   let rows='';
   HOTELS.forEach((h,hi)=>{
     const H=DER[h.id],L=h.cls[0].toUpperCase();
-    rows+=`<tr class="grp"><th class="rh" scope="rowgroup"><span class="dot ${h.cls}"></span> ${h.name}${H.example?' <span class="pill example" style="font-size:11px;padding:1px 7px">example</span>':''}</th><td colspan="8"></td></tr>`;
+    rows+=`<tr class="grp"><th class="rh" scope="rowgroup"><span class="dot ${h.cls}"></span> ${h.name}${H.example?' <span class="pill example" style="font-size:11px;padding:1px 7px">not imported</span>':''}</th><td colspan="${days.length}"></td></tr>`;
     rows+=`<tr class="need"><th class="rh" scope="row">Rooms to clean</th>${info.map((o,i)=>{const x=o[hi];const people=getA(days[i]).filter(v=>atHotel(v,L)).length;
       const sh=x.nOut>0&&people===0;return `<td class="n out ${sh?'short':''}" title="${x.nOut} check-outs, ${people} cleaner(s) at ${h.name}">${x.has?(x.nOut?`<b>${x.nOut}</b>`:'<span class="z">0</span>'):'–'}${chips(x.outs,x.both,'o')}</td>`;}).join('')}</tr>`;
     rows+=`<tr><th class="rh" scope="row">Check-ins</th>${info.map(o=>{const x=o[hi];return `<td class="n in">${x.has?(x.nIn?`<b>${x.nIn}</b>`:'<span class="z">0</span>'):'–'}${chips(x.ins,x.both,'i')}</td>`;}).join('')}</tr>`;
@@ -611,13 +641,54 @@ function renderWeek(){
   const ce=ST.readOnly?'':' contenteditable="true" spellcheck="false"';
   $('#sheet').innerHTML=`<thead><tr><th></th><th></th><th>Itzling</th><th>Grödig</th><th>Not available</th></tr></thead><tbody>`+
     sr.map(r=>`<tr class="${r.d===todayIso?'is-today':''}"><td class="wd">${r.wd}</td><td class="dt">${r.date}</td>${SHEET_COLS.map(k=>`<td class="${r.edited[k]?'edited':''}" data-sd="${r.d}" data-sk="${k}"${ce} title="${r.edited[k]?'Your text. Clear it to go back to the automatic text.':'Click to write your own text'}">${esc(r[k])}</td>`).join('')}</tr>`).join('')+'</tbody>';
+  $('#adjReset').hidden=!ST.adj.start&&!ST.adj.end;
   const anyEdit=sr.some(r=>SHEET_COLS.some(k=>r.edited[k]));$('#resetSheet').hidden=!anyEdit||ST.readOnly;}
-function sheetTsv(){return [['','','Itzling','Grödig','Not available'].join('\t'),...sheetRows().map(r=>[r.wd,r.date,r.itz,r.gro,r.na].join('\t'))].join('\n');}
-function sheetText(){return sheetRows().map(r=>`${r.wd} ${r.date}\n  Itzling: ${r.itz||'-'}\n  Grödig: ${r.gro||'-'}`+(r.na?`\n  Not available: ${r.na}`:'')).join('\n\n');}
+/* Draw the week plan (as shown, including your own edits) onto a canvas and save it as a PNG. */
+async function downloadSheetImage(){
+  try{await document.fonts.ready;}catch(e){}
+  const rows=sheetRows(),days=weekDays(),S=2,PAD=32;
+  const cols=[{k:'wd',t:'',w:72,b:true},{k:'date',t:'',w:110,b:true,r:true},{k:'itz',t:'Itzling',w:330,c:'#1f5fbf'},{k:'gro',t:'Grödig',w:330,c:'#7c3fc8'},{k:'na',t:'Not available',w:190}];
+  const W=PAD*2+cols.reduce((a,c)=>a+c.w,0),FONT='"Public Sans",Arial,sans-serif',LH=24,CP=12,HEAD=52,TITLE=64;
+  const cv=document.createElement('canvas'),x=cv.getContext('2d');
+  const setFont=b=>{x.font=`${b?700:500} 17px ${FONT}`;};
+  const wrap=(txt,w,bold)=>{setFont(bold);const out=[];String(txt||'').split('\n').forEach(par=>{let line='';
+    par.split(' ').forEach(word=>{const t=line?line+' '+word:word;if(x.measureText(t).width>w-CP*2&&line){out.push(line);line=word;}else line=t;});out.push(line);});return out;};
+  const lay=rows.map(r=>{const cells=cols.map(c=>wrap(r[c.k],c.w,c.b));return {r,cells,h:Math.max(44,Math.max(...cells.map(l=>l.length))*LH+CP*2-6)};});
+  const H=PAD*2+TITLE+HEAD+lay.reduce((a,l)=>a+l.h,0);
+  cv.width=W*S;cv.height=H*S;x.scale(S,S);
+  x.fillStyle='#ffffff';x.fillRect(0,0,W,H);
+  x.textBaseline='top';x.fillStyle='#15202a';x.font=`800 26px "Archivo",${FONT}`;
+  x.fillText('Week plan',PAD,PAD);
+  x.font=`600 16px ${FONT}`;x.fillStyle='#5a6774';
+  const last=days[days.length-1];
+  x.fillText(`${wdOf(days[0])} ${fmtDate(days[0])} – ${wdOf(last)} ${fmtDate(last)} ${last.slice(0,4)}`,PAD,PAD+34);
+  let y=PAD+TITLE;
+  x.strokeStyle='#15202a';x.lineWidth=1.2;
+  let cx=PAD;
+  cols.forEach(c=>{x.strokeRect(cx,y,c.w,HEAD);
+    if(c.t){x.font=`700 18px ${FONT}`;x.fillStyle=c.c||'#15202a';x.textBaseline='bottom';x.fillText(c.t,cx+CP,y+HEAD-12);}
+    cx+=c.w;});
+  y+=HEAD;
+  lay.forEach(l=>{
+    if(l.r.d===todayIso){x.fillStyle='#e5eaef';x.fillRect(PAD,y,W-PAD*2,l.h);}
+    let cx=PAD;
+    cols.forEach((c,i)=>{x.strokeRect(cx,y,c.w,l.h);
+      setFont(c.b);x.fillStyle='#15202a';x.textBaseline='top';
+      const lines=l.cells[i],top=y+l.h-CP-lines.length*LH+4;
+      lines.forEach((t,j)=>{const tx=c.r?cx+c.w-CP-x.measureText(t).width:cx+CP;x.fillText(t,tx,top+j*LH);});
+      cx+=c.w;});
+    y+=l.h;});
+  const name=`week-plan-${days[0]}_to_${last}.png`;
+  cv.toBlob(b=>{
+    if(!b){toast('Could not create the image');return;}
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+    toast('Image downloaded: '+name);},'image/png');}
 function renderMonth(){
   /* One week, same Sunday-to-Sunday week as the rest of the cleaning plan */
   const days=weekDays();
-  $('#monH').textContent=`Week overview · ${fmtDate(days[0])} – ${fmtDate(days[7])} ${days[7].slice(0,4)}`;
+  $('#monH').textContent=`Week overview · ${fmtDate(days[0])} – ${fmtDate(days[days.length-1])} ${days[days.length-1].slice(0,4)}`;
   const wk=()=>'';
   const head=`<tr><th class="rh">Week</th>${days.map(d=>`<th class="${d===todayIso?'today':''}">${wdOf(d).slice(0,2)}<br>${+d.slice(8)}</th>`).join('')}<th>Days</th></tr>`;
   let body='';
@@ -625,14 +696,15 @@ function renderMonth(){
   const ro=ST.readOnly?'readonly':'';
   ST.names.forEach((nm,p)=>{
     const cnt={I:0,G:0,F:0};
-    const cells=days.map(d=>{const v=getA(d)[p]||'';if(atHotel(v,'I'))cnt.I++;if(atHotel(v,'G'))cnt.G++;if(v==='F')cnt.F++;return `<td class="${wk(d).trim()}"><button type="button" class="a ${v}" data-cyc="${d}" data-p="${p}" title="${esc(nm)} · ${wdOf(d)} ${fmtDate(d)}: ${ALABEL[v]||'not set'}" aria-label="${esc(nm)} ${wdOf(d)} ${fmtDate(d)}: ${ALABEL[v]||'not set'}">${v==='B'?'IG':v}</button></td>`;}).join('');
+    const cells=days.map(d=>{const v=getA(d)[p]||'';if(atHotel(v,'I'))cnt.I++;if(atHotel(v,'G'))cnt.G++;if(v==='F')cnt.F++;return `<td class="${wk(d).trim()}"><button type="button" class="a ${v}" data-cyc="${d}" data-p="${p}" title="${esc(nm)} · ${wdOf(d)} ${fmtDate(d)}: ${ALABEL[v]||'not set'}" aria-label="${esc(nm)} ${wdOf(d)} ${fmtDate(d)}: ${ALABEL[v]||'not set'}">${v==='B'?'IG':v}</button>${working(v)?(()=>{const t=getT(d)[p];return `<select class="tm${t?' set':''}" data-td="${d}" data-tp="${p}" title="${esc(nm)} starts at" aria-label="${esc(nm)} start time on ${wdOf(d)} ${fmtDate(d)}" ${ST.readOnly?'disabled':''}><option value="">all day</option>${TIMES.map(x=>`<option value="${x}"${x===t?' selected':''}>from ${x}</option>`).join('')}</select>`;})():''}</td>`;}).join('');
     body+=`<tr><td class="rh"><input class="name" id="name-${p}" value="${esc(nm)}" aria-label="Name of person ${p+1}" ${ro}></td>${cells}<td class="tot"><span style="color:var(--itz)">I ${cnt.I}</span> · <span style="color:var(--gro)">G ${cnt.G}</span> · F ${cnt.F}</td></tr>`;});
   $('#monTbl').innerHTML=`<thead>${head}</thead><tbody>${body}</tbody>`;}
 
+const csvCell=v=>{v=String(v);return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
 function csvMonth(){
   const L=[['Date','Weekday','Itzling rooms to clean','Grödig rooms to clean',...ST.names].map(csvCell).join(',')];
   for(const d of weekDays()){const a=getA(d);
-    L.push([d,wdOf(d),dayInfo('itzling',d).nOut,dayInfo('groedig',d).nOut,...a.map(v=>ALABEL[v]||'')].map(csvCell).join(','));}
+    L.push([d,wdOf(d),dayInfo('itzling',d).nOut,dayInfo('groedig',d).nOut,...a.map((v,p)=>(ALABEL[v]||'')+fromTxt(d,p))].map(csvCell).join(','));}
   return L.join('\n');}
 
 /* ---------- misc ---------- */
@@ -671,19 +743,27 @@ document.addEventListener('change',e=>{
     ST.names=ST.names.slice();ST.names[i]=v;
     if(store.kind==='db')writeDoc('settings/staff',{names:ST.names},0);else localSave();
     render();}
+  if(t.classList.contains('tm')){setT(t.dataset.td,+t.dataset.tp,t.value);render();}
   if(t.classList.contains('note')){setNote(t.dataset.nd,t.dataset.nk,t.value.trim());render();}
 });
 $('#wkPrev').addEventListener('click',()=>{ST.week=addDays(ST.week,-7);ST.month=addDays(ST.week,3).slice(0,7);render();});
 $('#wkNext').addEventListener('click',()=>{ST.week=addDays(ST.week,7);ST.month=addDays(ST.week,3).slice(0,7);render();});
 $('#wkToday').addEventListener('click',()=>{ST.week=mondayOf(todayIso);ST.month=todayIso.slice(0,7);render();});
+document.querySelectorAll('[data-adj]').forEach(b=>b.addEventListener('click',()=>{
+  const [k,v]=b.dataset.adj.split(':');const nx={...ST.adj,[k]:ST.adj[k]+(+v)};const n=8-nx.start+nx.end;
+  if(n<1){toast('The week needs at least one day');return;}if(n>21){toast('At most 21 days');return;}
+  ST.adj=nx;saveUi();render();}));
+$('#adjReset').addEventListener('click',()=>{ST.adj={start:0,end:0};saveUi();render();});
+$('#rgPrev').addEventListener('click',()=>$('#wkPrev').click());
+$('#rgNext').addEventListener('click',()=>$('#wkNext').click());
+$('#rgToday').addEventListener('click',()=>$('#wkToday').click());
 $('#monPrev').addEventListener('click',()=>$('#wkPrev').click());
 $('#monNext').addEventListener('click',()=>$('#wkNext').click());
-$('#copyPrev').addEventListener('click',()=>{const e=[];for(let i=0;i<7;i++){const d=addDays(ST.week,i);e.push([d,getA(addDays(d,-7))]);}setManyA(e);render();toast("Last week's plan copied");});
+$('#copyPrev').addEventListener('click',()=>{const e=weekDays().map(d=>[d,getA(addDays(d,-7))]);const tm={};weekDays().forEach(d=>{tm[d]=getT(addDays(d,-7));});setManyA(e,tm);render();toast("Last week's plan copied");});
 $('#clearWeek').addEventListener('click',e=>{const b=e.currentTarget;
-  if(b.dataset.armed){delete b.dataset.armed;b.textContent='Clear this week';const en=[];for(let i=0;i<7;i++)en.push([addDays(ST.week,i),blank()]);setManyA(en);render();toast('Week cleared');}
+  if(b.dataset.armed){delete b.dataset.armed;b.textContent='Clear this week';const en=weekDays().map(d=>[d,blank()]);setManyA(en);render();toast('Week cleared');}
   else{b.dataset.armed='1';b.textContent='Click again to clear';setTimeout(()=>{if(b.dataset.armed){delete b.dataset.armed;b.textContent='Clear this week';}},4000);}});
-$('#copySheet').addEventListener('click',()=>copyText(sheetTsv(),'Week plan'));
-$('#copySheetTxt').addEventListener('click',()=>copyText(sheetText(),'Week plan text'));
+$('#dlSheet').addEventListener('click',()=>downloadSheetImage());
 $('#copyMonth').addEventListener('click',()=>copyText(csvMonth(),'Week plan CSV'));
 
 /* ---------- clear all data ---------- */
@@ -701,14 +781,12 @@ $('#clearAll').addEventListener('click',e=>{const b=e.currentTarget;
 
 /* ---------- automatic import (needs the local server: start.bat / npm start) ---------- */
 const AU_KEY='hotels-board-auto';
-const EVEREST_LOGIN='https://booking.onestephost.com/everest/login.php?goto=%2Feverest%2Fcockpit%2Fplanning1%2F';
 function auLoad(){let o={};try{o=JSON.parse(localStorage.getItem(AU_KEY)||'{}');}catch(e){}
-  $('#au-months').value=o.months||1;$('#au-next').value=o.nextSelector||'';
-  $('#au-login').value=o.loginUrl||EVEREST_LOGIN;$('#au-show').checked=!!o.showBrowser;
+  $('#au-months').value=String(o.months===2?2:1);
   HOTELS.forEach(h=>{const a=(o.accounts||{})[h.id]||{};$(`#au-${h.id}-user`).value=a.username||'';
     if(a.password){$(`#au-${h.id}-pass`).value=a.password;$('#au-rememberPw').checked=true;}});}
 function auSave(){
-  const o={months:+$('#au-months').value||1,nextSelector:$('#au-next').value.trim(),loginUrl:$('#au-login').value.trim(),showBrowser:$('#au-show').checked,accounts:{}};
+  const o={months:+$('#au-months').value||1,accounts:{}};
   HOTELS.forEach(h=>{const a={username:$(`#au-${h.id}-user`).value.trim()};
     if($('#au-rememberPw').checked)a.password=$(`#au-${h.id}-pass`).value;o.accounts[h.id]=a;});
   try{localStorage.setItem(AU_KEY,JSON.stringify(o));}catch(e){}}
@@ -729,7 +807,7 @@ $('#autoForm').addEventListener('submit',async e=>{
   if(half){msg.className='msg err';msg.textContent=`${half.name}: enter both username and password.`;return;}
   const use=hotels.filter(h=>h.username&&h.password);
   if(!use.length){msg.className='msg err';msg.textContent='Enter the Everest username and password for Itzling, Grödig, or both.';return;}
-  const body={loginUrl:$('#au-login').value.trim()||EVEREST_LOGIN,months:+$('#au-months').value||1,nextSelector:$('#au-next').value.trim(),showBrowser:$('#au-show').checked,hotels:use};
+  const body={months:+$('#au-months').value||1,hotels:use};
   await auPing();
   if(!AU_SERVER){msg.className='msg err';msg.textContent='The board server is not running. Double-click start.bat in the Hotel-Management folder, keep its window open, then try again.';return;}
   btn.disabled=true;btn.textContent='Importing… (about a minute per hotel)';msg.className='msg';msg.textContent='Logging in to Everest: '+use.map(h=>h.name).join(', ')+'… If Everest asks for a Google Authenticator code, an Everest window opens: type the code there and click Login.';auLog([]);
