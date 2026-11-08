@@ -22,23 +22,7 @@ Under **More settings**:
 - **Months to import** — 1 month (this month) or 2 months (this month + next month). For 2 months the importer clicks the next-month arrow on the planning page by itself.
 - If an import fails, a screenshot of the Everest page is saved in `debug/`.
 
-Logins are only sent to your own board server. Passwords are not saved unless you tick *Remember passwords on this device*.
-
-## Use it on your phone (Render.com, free)
-
-The board page is on GitHub Pages: <https://naimparves.github.io/Hotel-Management/>.
-For the import it needs the board server running online. Set it up once:
-
-1. Go to <https://render.com> and sign up for free with your GitHub account.
-2. Click **New** → **Blueprint**, choose the **Hotel-Management** repository and click **Deploy**.
-   Render reads `render.yaml` and builds the server (takes about 5–10 minutes the first time).
-3. When it says **Live**, copy the address at the top (normally `https://everest-board.onrender.com`).
-   If it is different, open the board on the phone → **More settings** → **Board server address** and paste it there.
-4. On the phone open the board, enter the logins and click **Log in & import both hotels**.
-   - The first time, Everest asks for a **Google Authenticator code**: a Code box appears under that hotel. Type the current code and import again. The phone remembers it, so it is not needed again.
-   - The free server sleeps after ~15 minutes without use. The first import after a break takes about a minute longer while it wakes up.
-
-Each device keeps its own board data (bookings and plans are saved in that browser).
+Logins are only sent to the local server on this computer. Passwords are not saved unless you tick *Remember passwords on this computer*.
 
 ## Cleaning plan
 
